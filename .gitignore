@@ -1,0 +1,55 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Env
+.env
+.env.*
+!.env.example
+*.local
+
+# Secrets / keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+keystore/
+mnemonic*
+private-key*
+private_key*
+secrets.*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+npm-debug.log*
+*.log
+dist/
+.vite/
+frontend/screenshots/
+
+# Foundry
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/lib/
+
+# Local data
+*.sqlite3
+*.db
+*.dump
+*.sql.gz
+tmp/
