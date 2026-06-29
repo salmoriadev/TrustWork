@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     )
     indexer_start_block: int = Field(default=0, alias="INDEXER_START_BLOCK")
     indexer_confirmations: int = 3
+    max_job_amount_raw: int = Field(default=10_000_000_000, alias="MAX_JOB_AMOUNT_RAW")
 
     @property
     def api_cors_origins(self) -> list[str]:

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, MessageSquareText, TimerReset } from "lucide-react";
 
 import { EscrowActionPanel } from "./components/EscrowActionPanel";
+import { TermsBanner } from "./components/TermsBanner";
 import { EscrowTimeline } from "./components/EscrowTimeline";
 import { EvidencePanel } from "./components/EvidencePanel";
 import { ProfilePanel } from "./components/ProfilePanel";
@@ -181,6 +182,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-app text-ink">
       <WalletBar session={session} onConnect={handleConnect} error={walletError} />
+      <TermsBanner />
 
       <main className="grid min-h-[calc(100vh-65px)] grid-cols-1 lg:grid-cols-[minmax(360px,0.95fr)_minmax(420px,1.05fr)_300px]">
         <SwipeDeck

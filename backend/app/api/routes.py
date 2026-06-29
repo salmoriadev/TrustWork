@@ -3,7 +3,7 @@ from decimal import Decimal
 from time import time_ns
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
@@ -12,7 +12,9 @@ from app.models import (
     Dispute,
     EvidenceFile,
     Job,
+    JobStatus,
     Milestone,
+    MilestoneStatus,
     SwipeAction,
     User,
     UserReputationSnapshot,
@@ -22,6 +24,7 @@ from app.schemas import (
     EscrowConfigRead,
     EvidenceCreateRequest,
     EvidenceRead,
+    FunnelMetricsRead,
     IndexerPollRead,
     JobPrepareRead,
     JobPrepareRequest,
@@ -93,6 +96,13 @@ def prepare_job(payload: JobPrepareRequest) -> JobPrepareRead:
         raise HTTPException(status_code=422, detail="Invalid freelancer wallet")
     if any(amount <= 0 for amount in payload.milestone_amounts_raw):
         raise HTTPException(status_code=422, detail="Milestone amounts must be positive")
+
+    total = sum(payload.milestone_amounts_raw)
+    if total > settings.max_job_amount_raw:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Total amount {total} exceeds max job amount {settings.max_job_amount_raw}",
+        )
 
     job_id = payload.job_id or time_ns()
     return JobPrepareRead(
@@ -296,6 +306,48 @@ def refresh_all_reputations(db: Session = Depends(get_db)) -> list[ReputationRea
         )
         for snapshot in snapshots
     ]
+
+
+@router.get("/metrics/funnel", response_model=FunnelMetricsRead)
+def funnel_metrics(db: Session = Depends(get_db)) -> FunnelMetricsRead:
+    total_swipes = db.execute(select(func.count(SwipeAction.id))).scalar_one()
+    total_matches = db.execute(
+        select(func.count(SwipeAction.id)).where(
+            SwipeAction.target_type == "job", SwipeAction.direction.in_(["right", "super"])
+        )
+    ).scalar_one()
+    jobs_created = db.execute(
+        select(func.count(Job.id)).where(Job.status != JobStatus.created)
+    ).scalar_one()
+    jobs_funded = db.execute(
+        select(func.count(Job.id)).where(
+            Job.status.in_([JobStatus.funded, JobStatus.in_progress])
+        )
+    ).scalar_one()
+    jobs_completed = db.execute(
+        select(func.count(Job.id)).where(
+            Job.status.in_([JobStatus.completed, JobStatus.resolved])
+        )
+    ).scalar_one()
+    jobs_disputed = db.execute(
+        select(func.count(Job.id)).where(Job.status == JobStatus.disputed)
+    ).scalar_one()
+    milestones_approved = db.execute(
+        select(func.count(Milestone.id)).where(
+            Milestone.status.in_([MilestoneStatus.released, MilestoneStatus.resolved])
+        )
+    ).scalar_one()
+    disputes_opened = db.execute(select(func.count(Dispute.id))).scalar_one()
+    return FunnelMetricsRead(
+        total_swipes=total_swipes,
+        total_matches=total_matches,
+        jobs_created=jobs_created,
+        jobs_funded=jobs_funded,
+        jobs_completed=jobs_completed,
+        jobs_disputed=jobs_disputed,
+        milestones_approved=milestones_approved,
+        disputes_opened=disputes_opened,
+    )
 
 
 def _looks_like_address(value: str) -> bool:

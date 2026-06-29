@@ -1,5 +1,7 @@
 # Fase 08 - MVP Beta Controlado
 
+Status: iniciada em 2026-06-29.
+
 ## Objetivo
 
 Operar um beta controlado com usuarios reais, valores baixos, arbitragem centralizada e monitoramento basico.

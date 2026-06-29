@@ -158,3 +158,14 @@ class ReputationRead(BaseModel):
     dispute_rate_bps: int
     repeat_client_count: int
     updated_at: datetime | None = None
+
+
+class FunnelMetricsRead(BaseModel):
+    total_swipes: int
+    total_matches: int
+    jobs_created: int
+    jobs_funded: int
+    jobs_completed: int
+    jobs_disputed: int
+    milestones_approved: int
+    disputes_opened: int
