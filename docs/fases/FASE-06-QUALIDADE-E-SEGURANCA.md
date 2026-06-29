@@ -1,5 +1,7 @@
 # Fase 06 - Qualidade e Seguranca
 
+Status: iniciada em 2026-06-29.
+
 ## Objetivo
 
 Elevar a confiabilidade tecnica do MVP antes de qualquer uso publico com valor real, mesmo baixo.
