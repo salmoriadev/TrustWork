@@ -67,6 +67,19 @@ class User(Base):
     )
 
 
+class SwipeAction(Base):
+    __tablename__ = "swipe_actions"
+    __table_args__ = (Index("ix_swipe_actions_actor", "actor_wallet", "created_at"),)
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    actor_wallet: Mapped[str] = mapped_column(String(42))
+    target_type: Mapped[str] = mapped_column(String(32))
+    target_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True))
+    direction: Mapped[str] = mapped_column(String(16))
+    context: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Job(Base):
     __tablename__ = "jobs"
     __table_args__ = (

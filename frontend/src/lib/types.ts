@@ -24,6 +24,7 @@ export interface Reputation {
 }
 
 export interface MarketplaceJob {
+  dbId?: string;
   id: number;
   title: string;
   client: string;

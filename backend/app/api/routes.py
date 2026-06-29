@@ -7,14 +7,19 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models import Job, UserReputationSnapshot
+from app.models import Job, SwipeAction, User, UserReputationSnapshot
 from app.schemas import (
     EscrowConfigRead,
     IndexerPollRead,
     JobPrepareRead,
     JobPrepareRequest,
     JobRead,
+    MatchRead,
     ReputationRead,
+    SwipeCreateRequest,
+    SwipeRead,
+    UserRead,
+    UserUpsertRequest,
 )
 from app.services.event_indexer import EscrowEventIndexer
 
@@ -34,6 +39,39 @@ def escrow_config() -> EscrowConfigRead:
         usdc_contract_address=settings.usdc_contract_address,
         escrow_arbitrator=settings.escrow_arbitrator,
     )
+
+
+@router.get("/users/{wallet_address}", response_model=UserRead)
+def get_user(wallet_address: str, db: Session = Depends(get_db)) -> User:
+    user = db.execute(
+        select(User).where(User.wallet_address == wallet_address.lower())
+    ).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.put("/users/{wallet_address}", response_model=UserRead)
+def upsert_user(
+    wallet_address: str,
+    payload: UserUpsertRequest,
+    db: Session = Depends(get_db),
+) -> User:
+    if not _looks_like_address(wallet_address):
+        raise HTTPException(status_code=422, detail="Invalid wallet")
+
+    wallet = wallet_address.lower()
+    user = db.execute(select(User).where(User.wallet_address == wallet)).scalar_one_or_none()
+    if user is None:
+        user = User(wallet_address=wallet)
+        db.add(user)
+
+    user.display_name = payload.display_name
+    user.role_preference = payload.role_preference
+    user.profile_visibility = payload.profile_visibility
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.post("/jobs/prepare", response_model=JobPrepareRead)
@@ -61,6 +99,45 @@ def poll_indexer() -> IndexerPollRead:
     latest_block = indexer.web3.eth.block_number
     indexer.poll_range(settings.indexer_start_block, latest_block)
     return IndexerPollRead(latest_block=latest_block)
+
+
+@router.post("/swipes", response_model=SwipeRead)
+def create_swipe(payload: SwipeCreateRequest, db: Session = Depends(get_db)) -> SwipeAction:
+    if not _looks_like_address(payload.actor_wallet):
+        raise HTTPException(status_code=422, detail="Invalid actor wallet")
+
+    if payload.target_type == "job" and db.get(Job, payload.target_id) is None:
+        raise HTTPException(status_code=404, detail="Target job not found")
+
+    swipe = SwipeAction(
+        actor_wallet=payload.actor_wallet.lower(),
+        target_type=payload.target_type,
+        target_id=payload.target_id,
+        direction=payload.direction,
+        context=payload.context,
+    )
+    db.add(swipe)
+    db.commit()
+    db.refresh(swipe)
+    return swipe
+
+
+@router.get("/matches/{wallet_address}", response_model=list[MatchRead])
+def list_matches(wallet_address: str, db: Session = Depends(get_db)) -> list[MatchRead]:
+    wallet = wallet_address.lower()
+    stmt = (
+        select(SwipeAction, Job)
+        .join(Job, Job.id == SwipeAction.target_id)
+        .options(selectinload(Job.milestones))
+        .where(
+            SwipeAction.actor_wallet == wallet,
+            SwipeAction.target_type == "job",
+            SwipeAction.direction.in_(["right", "super"]),
+        )
+        .order_by(SwipeAction.created_at.desc())
+        .limit(25)
+    )
+    return [MatchRead(swipe=swipe, job=job) for swipe, job in db.execute(stmt).all()]
 
 
 @router.get("/jobs", response_model=list[JobRead])

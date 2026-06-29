@@ -12,6 +12,44 @@ class EscrowConfigRead(BaseModel):
     escrow_arbitrator: str
 
 
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    wallet_address: str
+    display_name: str | None
+    role_preference: str | None
+    profile_visibility: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserUpsertRequest(BaseModel):
+    display_name: str | None = Field(default=None, max_length=120)
+    role_preference: str | None = Field(default="both", pattern="^(client|freelancer|both)$")
+    profile_visibility: str = Field(default="public", pattern="^(public|private)$")
+
+
+class SwipeCreateRequest(BaseModel):
+    actor_wallet: str = Field(min_length=42, max_length=42)
+    target_type: str = Field(pattern="^(job|freelancer)$")
+    target_id: UUID
+    direction: str = Field(pattern="^(left|right|super)$")
+    context: dict = Field(default_factory=dict)
+
+
+class SwipeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    actor_wallet: str
+    target_type: str
+    target_id: UUID
+    direction: str
+    context: dict
+    created_at: datetime
+
+
 class JobPrepareRequest(BaseModel):
     freelancer_wallet: str = Field(min_length=42, max_length=42)
     milestone_amounts_raw: list[int] = Field(min_length=1)
@@ -62,6 +100,11 @@ class JobRead(BaseModel):
     released_amount_raw: Decimal
     status: str
     milestones: list[MilestoneRead] = []
+
+
+class MatchRead(BaseModel):
+    job: JobRead
+    swipe: SwipeRead
 
 
 class ReputationRead(BaseModel):

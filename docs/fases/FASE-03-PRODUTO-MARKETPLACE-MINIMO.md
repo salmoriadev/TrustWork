@@ -1,5 +1,7 @@
 # Fase 03 - Produto Marketplace Minimo
 
+Status: iniciada em [RESULTADO-FASE-03.md](RESULTADO-FASE-03.md).
+
 ## Objetivo
 
 Transformar a demo tecnica em uma experiencia minima de marketplace com perfis, descoberta por swipe, matches e criacao guiada de contrato.

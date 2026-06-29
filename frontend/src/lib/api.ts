@@ -28,6 +28,7 @@ interface ApiMilestone {
 }
 
 interface ApiJob {
+  id: string;
   onchain_job_id: string;
   client_wallet: string;
   freelancer_wallet: string;
@@ -36,6 +37,23 @@ interface ApiJob {
   total_amount_raw: string;
   status: MarketplaceJob["escrowState"];
   milestones: ApiMilestone[];
+}
+
+export interface UserProfile {
+  id: string;
+  wallet_address: string;
+  display_name: string | null;
+  role_preference: "client" | "freelancer" | "both" | null;
+  profile_visibility: string;
+}
+
+export interface MatchRead {
+  job: ApiJob;
+  swipe: {
+    id: string;
+    direction: "left" | "right" | "super";
+    created_at: string;
+  };
 }
 
 export async function fetchMarketplaceJobs(): Promise<MarketplaceJob[]> {
@@ -87,6 +105,60 @@ export async function pollIndexer(): Promise<void> {
   }
 }
 
+export async function upsertUserProfile(params: {
+  walletAddress: string;
+  displayName?: string;
+  rolePreference?: "client" | "freelancer" | "both";
+}): Promise<UserProfile> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/users/${params.walletAddress}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      display_name: params.displayName ?? `User ${shortWallet(params.walletAddress)}`,
+      role_preference: params.rolePreference ?? "both",
+      profile_visibility: "public"
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  return (await response.json()) as UserProfile;
+}
+
+export async function createSwipe(params: {
+  actorWallet: string;
+  targetId: string;
+  direction: "left" | "right" | "super";
+  context?: Record<string, unknown>;
+}): Promise<void> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/swipes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      actor_wallet: params.actorWallet,
+      target_type: "job",
+      target_id: params.targetId,
+      direction: params.direction,
+      context: params.context ?? {}
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+}
+
+export async function fetchMatches(walletAddress: string): Promise<MarketplaceJob[]> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/matches/${walletAddress}`);
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  const matches = (await response.json()) as MatchRead[];
+  return matches.map((match) => toMarketplaceJob(match.job));
+}
+
 function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 }
@@ -94,6 +166,7 @@ function apiBaseUrl(): string {
 function toMarketplaceJob(job: ApiJob): MarketplaceJob {
   const id = Number(job.onchain_job_id);
   return {
+    dbId: job.id,
     id,
     title: job.title ?? `Contrato on-chain #${id}`,
     client: shortWallet(job.client_wallet),
