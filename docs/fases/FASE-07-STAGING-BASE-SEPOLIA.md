@@ -1,5 +1,7 @@
 # Fase 07 - Staging Base Sepolia
 
+Status: iniciada em 2026-06-29.
+
 ## Objetivo
 
 Publicar o MVP em ambiente de testnet usando Base Sepolia para validacao externa controlada.
