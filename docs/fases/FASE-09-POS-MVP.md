@@ -1,5 +1,7 @@
 # Fase 09 - Pos-MVP
 
+Status: iniciada em 2026-06-29.
+
 ## Objetivo
 
 Evoluir o produto alem do MVP validado, reduzindo friccao de onboarding e abrindo caminhos de monetizacao e infraestrutura.

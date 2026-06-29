@@ -2,32 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f6f7fb;
+@layer base {
+  :root {
+    color-scheme: light;
+    --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Fira Code", monospace;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    font-family: var(--font-sans);
+    background: #f6f7fb;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgba(49, 94, 251, 0.15);
+    color: #111827;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d9dee8;
+    border-radius: 3px;
+  }
 }
 
-* {
-  box-sizing: border-box;
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-white shadow-card transition-shadow duration-200;
+  }
+
+  .card:hover {
+    @apply shadow-elevated;
+  }
+
+  .card-flat {
+    @apply rounded-xl border border-line bg-white;
+  }
+
+  .tag {
+    @apply inline-flex items-center rounded-lg border border-line bg-app px-2.5 py-1 text-xs font-medium text-ink;
+  }
+
+  .tag-chain {
+    @apply border-chain/20 bg-chain/5 text-chain;
+  }
+
+  .tag-trust {
+    @apply border-trust/20 bg-trust/5 text-trust;
+  }
+
+  .tag-coral {
+    @apply border-coral/20 bg-coral/5 text-coral;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150;
+  }
+
+  .btn-primary {
+    @apply btn bg-chain text-white hover:bg-ink active:scale-[0.97];
+  }
+
+  .btn-ghost {
+    @apply btn border border-line bg-white text-ink hover:bg-app active:scale-[0.97];
+  }
+
+  .btn-trust {
+    @apply btn bg-trust text-white hover:bg-ink active:scale-[0.97];
+  }
+
+  .btn-icon {
+    @apply grid h-10 w-10 place-items-center rounded-lg border border-line bg-white text-ink transition-all duration-150 hover:shadow-card active:scale-[0.95];
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink placeholder:text-muted/60 transition-shadow duration-150 focus:shadow-glow focus:outline-none;
+  }
+
+  .label {
+    @apply block text-xs font-semibold uppercase tracking-[0.1em] text-muted;
+  }
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-}
-
-button {
-  font: inherit;
+@layer utilities {
+  .bg-subtle {
+    background: linear-gradient(135deg, rgba(49, 94, 251, 0.03) 0%, rgba(15, 159, 143, 0.03) 100%);
+  }
 }
 
 .job-visual {
   background:
     repeating-linear-gradient(
       120deg,
-      rgba(255, 255, 255, 0.2) 0,
-      rgba(255, 255, 255, 0.2) 1px,
+      rgba(255, 255, 255, 0.15) 0,
+      rgba(255, 255, 255, 0.15) 1px,
       transparent 1px,
       transparent 16px
     ),

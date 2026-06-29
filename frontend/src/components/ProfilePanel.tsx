@@ -20,44 +20,54 @@ export function ProfilePanel({
   onSave
 }: ProfilePanelProps) {
   return (
-    <section className="mb-4 rounded-md border border-line bg-app p-3">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Perfil</p>
-      <h2 className="mt-1 text-base font-semibold text-ink">
-        {session ? shortWallet(session.address) : "Conecte uma wallet"}
-      </h2>
+    <section className="card-flat p-4">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-chain to-trust text-sm font-bold text-white shadow-sm">
+          {session ? session.address.slice(2, 4).toUpperCase() : "?"}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Perfil</p>
+          <h2 className="truncate text-sm font-bold text-ink">
+            {session ? shortWallet(session.address) : "Conecte uma wallet"}
+          </h2>
+        </div>
+      </div>
 
-      <div className="mt-3 space-y-2">
-        <label className="block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-          Nome publico
+      <div className="space-y-3">
+        <div>
+          <label className="label mb-1.5">Nome publico</label>
           <input
-            className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
+            className="input"
             disabled={!session}
             value={profileName}
             onChange={(event) => onNameChange(event.target.value)}
+            placeholder="Seu nome"
           />
-        </label>
-        <label className="block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-          Papel
+        </div>
+        <div>
+          <label className="label mb-1.5">Papel</label>
           <select
-            className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
+            className="input"
             disabled={!session}
             value={rolePreference}
             onChange={(event) => onRoleChange(event.target.value as "client" | "freelancer" | "both")}
           >
-            <option value="both">cliente e freelancer</option>
-            <option value="client">cliente</option>
-            <option value="freelancer">freelancer</option>
+            <option value="both">Cliente e freelancer</option>
+            <option value="client">Cliente</option>
+            <option value="freelancer">Freelancer</option>
           </select>
-        </label>
+        </div>
         <button
-          className="w-full rounded-md bg-chain px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn-primary w-full"
           type="button"
           disabled={!session}
           onClick={onSave}
         >
           Salvar perfil
         </button>
-        <p className="text-xs leading-5 text-muted">{status}</p>
+        {status ? (
+          <p className="rounded-lg bg-app px-3 py-2 text-xs leading-relaxed text-muted">{status}</p>
+        ) : null}
       </div>
     </section>
   );

@@ -184,7 +184,7 @@ export default function App() {
       <WalletBar session={session} onConnect={handleConnect} error={walletError} />
       <TermsBanner />
 
-      <main className="grid min-h-[calc(100vh-65px)] grid-cols-1 lg:grid-cols-[minmax(360px,0.95fr)_minmax(420px,1.05fr)_300px]">
+      <main className="grid min-h-[calc(100vh-65px)] grid-cols-1 lg:grid-cols-[minmax(380px,0.9fr)_minmax(440px,1.1fr)_320px]">
         <SwipeDeck
           job={activeJob}
           index={activeIndex}
@@ -194,28 +194,28 @@ export default function App() {
         />
 
         <section className="border-r border-line bg-white">
-          <div className="border-b border-line p-4 md:p-5">
+          <div className="border-b border-line p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
                   Workspace {dataSource === "api" ? "on-chain" : "demo"}
                 </p>
-                <h2 className="text-lg font-semibold text-ink">Contrato #{activeJob.id}</h2>
+                <h2 className="mt-0.5 text-lg font-bold text-ink">Contrato #{activeJob.id}</h2>
               </div>
               <button
-                className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink transition hover:border-chain"
+                className="btn-icon"
                 type="button"
                 aria-label="Abrir contrato"
                 title="Abrir contrato"
               >
-                <ArrowUpRight className="h-5 w-5" aria-hidden="true" />
+                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <Action icon={TimerReset} label="Timeout" value="7 dias" />
-              <Action icon={MessageSquareText} label="Chat" value="privado" />
-              <Action icon={ArrowUpRight} label="Rede" value="Base" />
+              <Stat icon={TimerReset} label="Timeout" value="7 dias" />
+              <Stat icon={MessageSquareText} label="Chat" value="privado" />
+              <Stat icon={ArrowUpRight} label="Rede" value="Base" />
             </div>
           </div>
 
@@ -223,7 +223,7 @@ export default function App() {
           <ReputationPanel reputation={displayedReputation} onRefresh={refreshActiveReputation} />
         </section>
 
-        <aside className="bg-white p-4 md:p-5">
+        <aside className="p-5 space-y-4">
           <ProfilePanel
             session={session}
             profileName={profileName}
@@ -234,26 +234,24 @@ export default function App() {
             onSave={() => void saveProfile()}
           />
 
-          <div className="mb-4">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Matches</p>
-            <h2 className="text-lg font-semibold text-ink">Fila ativa</h2>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Matches</p>
+            <h2 className="mt-0.5 text-base font-bold text-ink">Fila ativa</h2>
           </div>
 
           <div className="space-y-3">
             {(matchedJobs.length ? matchedJobs : apiJobs.slice(0, 2)).map((job) => (
-              <article className="rounded-md border border-line bg-app p-3" key={job.id}>
+              <article className="card-flat p-3 animate-fade-in" key={job.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold text-ink">{job.title}</h3>
-                    <p className="mt-1 text-xs text-muted">{job.client}</p>
+                    <h3 className="truncate text-sm font-bold text-ink">{job.title}</h3>
+                    <p className="mt-0.5 text-xs text-muted">{job.client}</p>
                   </div>
-                  <span className="rounded-md bg-white px-2 py-1 text-xs font-semibold text-trust">
-                    {job.matchScore}
-                  </span>
+                  <span className="tag tag-trust shrink-0">{job.matchScore}</span>
                 </div>
                 <div className="mt-3 flex items-center justify-between text-xs text-muted">
-                  <span>{job.budget}</span>
-                  <span>{job.escrowState}</span>
+                  <span className="font-medium">{job.budget}</span>
+                  <span className="tag tag-chain text-[10px] !py-0.5">{job.escrowState}</span>
                 </div>
               </article>
             ))}
@@ -267,7 +265,7 @@ export default function App() {
   );
 }
 
-function Action({
+function Stat({
   icon: Icon,
   label,
   value
@@ -277,12 +275,12 @@ function Action({
   value: string;
 }) {
   return (
-    <div className="rounded-md border border-line bg-app p-3">
-      <div className="mb-2 grid h-8 w-8 place-items-center rounded-md bg-white text-chain">
+    <div className="rounded-xl border border-line bg-app p-3 transition-colors hover:border-chain/20">
+      <div className="mb-2 grid h-8 w-8 place-items-center rounded-lg bg-white text-chain shadow-sm">
         <Icon className="h-4 w-4" aria-hidden="true" />
       </div>
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-ink">{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{label}</p>
+      <p className="mt-0.5 text-sm font-bold text-ink">{value}</p>
     </div>
   );
 }

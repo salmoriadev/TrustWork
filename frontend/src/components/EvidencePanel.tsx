@@ -54,14 +54,14 @@ export function EvidencePanel({ activeJob, session }: EvidencePanelProps) {
   }
 
   return (
-    <section className="mt-5 rounded-md border border-line bg-app p-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <section className="card-flat p-4 mt-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Fase 04</p>
-          <h2 className="text-base font-semibold text-ink">Evidencias privadas</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Evidencias</p>
+          <h2 className="mt-0.5 text-base font-bold text-ink">Registro privado</h2>
         </div>
         <button
-          className="grid h-9 w-9 place-items-center rounded-md border border-line bg-white text-ink"
+          className="btn-icon h-9 w-9"
           type="button"
           onClick={() => reloadEvidence().catch(() => setStatus("Falha ao recarregar."))}
           title="Recarregar evidencias"
@@ -71,46 +71,48 @@ export function EvidencePanel({ activeJob, session }: EvidencePanelProps) {
       </div>
 
       <div className="space-y-3">
-        <label className="block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-          Nome do arquivo
-          <input
-            className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
-            value={fileName}
-            onChange={(event) => setFileName(event.target.value)}
-          />
-        </label>
-        <label className="block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-          Nota privada
+        <div>
+          <label className="label mb-1.5">Nome do arquivo</label>
+          <input className="input" value={fileName} onChange={(event) => setFileName(event.target.value)} />
+        </div>
+        <div>
+          <label className="label mb-1.5">Nota privada</label>
           <textarea
-            className="mt-1 min-h-20 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
+            className="input min-h-[5rem] resize-y"
             value={body}
             onChange={(event) => setBody(event.target.value)}
           />
-        </label>
+        </div>
         <button
-          className="w-full rounded-md bg-gold px-3 py-2 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn-primary w-full"
           type="button"
           disabled={!session || !activeJob.dbId}
           onClick={handleCreateEvidence}
         >
-          Registrar evidencia off-chain
+          Registrar evidencia
         </button>
 
-        <div className="space-y-2">
-          {evidence.map((item) => (
-            <article className="rounded-md border border-line bg-white p-2" key={item.id}>
-              <div className="flex items-start gap-2">
-                <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-trust" aria-hidden="true" />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-ink">{item.storage_uri}</p>
-                  <p className="mt-1 break-all text-xs text-muted">sha256: {item.sha256_hash}</p>
+        {evidence.length > 0 && (
+          <div className="space-y-2">
+            {evidence.map((item) => (
+              <article className="rounded-xl border border-line bg-app p-3" key={item.id}>
+                <div className="flex items-start gap-3">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white shadow-sm">
+                    <FileCheck2 className="h-4 w-4 text-trust" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-ink">{item.storage_uri}</p>
+                    <p className="mt-1 font-mono text-xs text-muted break-all">{item.sha256_hash}</p>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
 
-        <p className="rounded-md border border-line bg-white p-2 text-xs leading-5 text-muted">{status}</p>
+        {status ? (
+          <p className="rounded-lg bg-app px-3 py-2.5 text-xs leading-relaxed text-muted">{status}</p>
+        ) : null}
       </div>
     </section>
   );

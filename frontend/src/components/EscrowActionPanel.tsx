@@ -71,101 +71,56 @@ export function EscrowActionPanel({ activeJob, onRefresh }: EscrowActionPanelPro
   const selectedMilestoneId = Number(milestoneId);
 
   return (
-    <section className="mt-5 rounded-md border border-line bg-app p-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <section className="card-flat p-4 mt-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Fase 02</p>
-          <h2 className="text-base font-semibold text-ink">Acoes escrow reais</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Acoes escrow</p>
+          <h2 className="mt-0.5 text-base font-bold text-ink">Transacoes on-chain</h2>
         </div>
-        <button
-          className="grid h-9 w-9 place-items-center rounded-md border border-line bg-white text-ink"
-          type="button"
-          onClick={handleSync}
-          title="Sincronizar eventos"
-        >
+        <button className="btn-icon h-9 w-9" type="button" onClick={handleSync} title="Sincronizar eventos">
           <RefreshCw className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
       <div className="space-y-3">
-        <label className="block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-          Freelancer
-          <input
-            className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
-            value={freelancerWallet}
-            onChange={(event) => setFreelancerWallet(event.target.value)}
-          />
-        </label>
-        <label className="block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-          Milestones USDC
-          <input
-            className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
-            value={amounts}
-            onChange={(event) => setAmounts(event.target.value)}
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="label mb-1">Freelancer</label>
+            <input className="input font-mono text-xs" value={freelancerWallet} onChange={(event) => setFreelancerWallet(event.target.value)} />
+          </div>
+          <div>
+            <label className="label mb-1">Milestones USDC</label>
+            <input className="input" value={amounts} onChange={(event) => setAmounts(event.target.value)} />
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <ActionButton label="Preparar" onClick={() => run("Preparar job", handlePrepareJob)} />
-          <ActionButton
-            label="Approve USDC"
-            disabled={!preparedJob}
-            onClick={() => preparedJob && run("Approve USDC", () => approveUsdc(preparedJob))}
-          />
-          <ActionButton
-            label="createJob"
-            disabled={!preparedJob}
-            onClick={() => preparedJob && run("createJob", () => createPreparedJob(preparedJob))}
-          />
-          <ActionButton
-            label="fundJob"
-            disabled={!preparedJob || !config}
-            onClick={() => preparedJob && config && run("fundJob", () => fundJob(config, preparedJob.job_id))}
-          />
+          <button className="btn-primary text-xs" onClick={() => run("Preparar job", handlePrepareJob)}>Preparar</button>
+          <button className="btn-ghost text-xs" disabled={!preparedJob} onClick={() => preparedJob && run("Approve USDC", () => approveUsdc(preparedJob))}>Approve USDC</button>
+          <button className="btn-ghost text-xs" disabled={!preparedJob} onClick={() => preparedJob && run("createJob", () => createPreparedJob(preparedJob))}>createJob</button>
+          <button className="btn-ghost text-xs" disabled={!preparedJob || !config} onClick={() => preparedJob && config && run("fundJob", () => fundJob(config, preparedJob.job_id))}>fundJob</button>
         </div>
 
         <div className="border-t border-line pt-3">
-          <label className="block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-            Milestone ativo
-            <input
-              className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
-              value={milestoneId}
-              onChange={(event) => setMilestoneId(event.target.value)}
-            />
-          </label>
-          <label className="mt-2 block text-xs font-medium uppercase tracking-[0.12em] text-muted">
-            Evidencia / notas
-            <input
-              className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm normal-case tracking-normal text-ink"
-              value={evidence}
-              onChange={(event) => setEvidence(event.target.value)}
-            />
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="label mb-1">Milestone ativo</label>
+              <input className="input" value={milestoneId} onChange={(event) => setMilestoneId(event.target.value)} />
+            </div>
+            <div>
+              <label className="label mb-1">Evidencia</label>
+              <input className="input font-mono text-xs" value={evidence} onChange={(event) => setEvidence(event.target.value)} />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <ActionButton
-            label="submit"
-            disabled={!config}
-            onClick={() => config && run("submit", () => submitMilestone(config, selectedMilestoneId, evidence))}
-          />
-          <ActionButton
-            label="approve"
-            disabled={!config}
-            onClick={() => config && run("approve", () => approveMilestone(config, selectedMilestoneId))}
-          />
-          <ActionButton
-            label="revision"
-            disabled={!config}
-            onClick={() => config && run("revision", () => requestRevision(config, selectedMilestoneId, evidence))}
-          />
-          <ActionButton
-            label="dispute"
-            disabled={!config}
-            onClick={() => config && run("dispute", () => openDispute(config, selectedMilestoneId, evidence))}
-          />
+          <button className="btn-ghost text-xs" disabled={!config} onClick={() => config && run("submit", () => submitMilestone(config, selectedMilestoneId, evidence))}>submit</button>
+          <button className="btn-trust text-xs" disabled={!config} onClick={() => config && run("approve", () => approveMilestone(config, selectedMilestoneId))}>approve</button>
+          <button className="btn-ghost text-xs" disabled={!config} onClick={() => config && run("revision", () => requestRevision(config, selectedMilestoneId, evidence))}>revision</button>
+          <button className="btn-ghost !text-coral !border-coral/30 text-xs" disabled={!config} onClick={() => config && run("dispute", () => openDispute(config, selectedMilestoneId, evidence))}>dispute</button>
           <button
-            className="col-span-2 flex items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="col-span-2 btn bg-ink text-white hover:bg-chain text-xs"
             type="button"
             disabled={!config}
             onClick={() => config && run("timeout", () => releaseAfterTimeout(config, selectedMilestoneId))}
@@ -175,30 +130,9 @@ export function EscrowActionPanel({ activeJob, onRefresh }: EscrowActionPanelPro
           </button>
         </div>
 
-        <p className="rounded-md border border-line bg-white p-2 text-xs leading-5 text-muted">{status}</p>
+        <p className="rounded-lg bg-app px-3 py-2.5 text-xs leading-relaxed text-muted">{status}</p>
       </div>
     </section>
-  );
-}
-
-function ActionButton({
-  label,
-  disabled,
-  onClick
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      className="rounded-md bg-trust px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {label}
-    </button>
   );
 }
 
