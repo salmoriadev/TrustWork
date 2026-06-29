@@ -16,6 +16,17 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@router.get("/jobs", response_model=list[JobRead])
+def list_jobs(db: Session = Depends(get_db)) -> list[Job]:
+    stmt = (
+        select(Job)
+        .options(selectinload(Job.milestones))
+        .order_by(Job.created_at.desc())
+        .limit(25)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
 @router.get("/jobs/{onchain_job_id}", response_model=JobRead)
 def get_job(onchain_job_id: int, db: Session = Depends(get_db)) -> Job:
     stmt = (

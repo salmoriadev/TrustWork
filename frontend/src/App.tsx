@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, MessageSquareText, TimerReset } from "lucide-react";
 
 import { EscrowTimeline } from "./components/EscrowTimeline";
 import { ReputationPanel } from "./components/ReputationPanel";
 import { SwipeDeck } from "./components/SwipeDeck";
 import { WalletBar } from "./components/WalletBar";
+import { fetchMarketplaceJobs } from "./lib/api";
 import { jobs } from "./lib/mockData";
 import { connectWalletConnect, type WalletSession } from "./lib/wallet";
 
@@ -13,15 +14,39 @@ export default function App() {
   const [session, setSession] = useState<WalletSession | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [matches, setMatches] = useState<number[]>([]);
+  const [apiJobs, setApiJobs] = useState(jobs);
+  const [dataSource, setDataSource] = useState<"api" | "mock">("mock");
 
-  const activeJob = jobs[activeIndex];
+  useEffect(() => {
+    let ignore = false;
+
+    fetchMarketplaceJobs()
+      .then((remoteJobs) => {
+        if (!ignore && remoteJobs.length > 0) {
+          setApiJobs(remoteJobs);
+          setActiveIndex(0);
+          setDataSource("api");
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setDataSource("mock");
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const activeJob = apiJobs[activeIndex];
   const matchedJobs = useMemo(
-    () => jobs.filter((job) => matches.includes(job.id)),
-    [matches]
+    () => apiJobs.filter((job) => matches.includes(job.id)),
+    [apiJobs, matches]
   );
 
   function nextJob() {
-    setActiveIndex((current) => (current + 1) % jobs.length);
+    setActiveIndex((current) => (current + 1) % apiJobs.length);
   }
 
   function matchJob() {
@@ -58,7 +83,7 @@ export default function App() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">
-                  Workspace
+                  Workspace {dataSource === "api" ? "on-chain" : "demo"}
                 </p>
                 <h2 className="text-lg font-semibold text-ink">Contrato #{activeJob.id}</h2>
               </div>
@@ -90,7 +115,7 @@ export default function App() {
           </div>
 
           <div className="space-y-3">
-            {(matchedJobs.length ? matchedJobs : jobs.slice(0, 2)).map((job) => (
+            {(matchedJobs.length ? matchedJobs : apiJobs.slice(0, 2)).map((job) => (
               <article className="rounded-md border border-line bg-app p-3" key={job.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

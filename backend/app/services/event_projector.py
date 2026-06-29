@@ -169,7 +169,9 @@ def _get_dispute(
 def _refresh_job_status(job: Job, had_dispute: bool = False) -> None:
     final_statuses = {MilestoneStatus.released, MilestoneStatus.resolved}
     if job.milestones and all(milestone.status in final_statuses for milestone in job.milestones):
-        job.status = JobStatus.resolved if had_dispute or bool(job.disputes) else JobStatus.completed
+        job.status = (
+            JobStatus.resolved if had_dispute or bool(job.disputes) else JobStatus.completed
+        )
         job.completed_at = datetime.now(UTC)
     else:
         job.status = JobStatus.in_progress

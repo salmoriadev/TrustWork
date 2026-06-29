@@ -1,6 +1,7 @@
 export type MilestoneStatus =
   | "Pending"
   | "Submitted"
+  | "Approved"
   | "Released"
   | "RevisionRequested"
   | "Disputed"
@@ -30,7 +31,7 @@ export interface MarketplaceJob {
   duration: string;
   skills: string[];
   summary: string;
-  escrowState: "Created" | "Funded" | "InProgress" | "Disputed" | "Completed";
+  escrowState: "Created" | "Funded" | "InProgress" | "Completed" | "Cancelled" | "Disputed" | "Resolved";
   matchScore: number;
   milestones: Milestone[];
   reputation: Reputation;

@@ -5,7 +5,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     database_url: str = Field(
         default="postgresql+psycopg://postgres:postgres@localhost:5432/freelance_escrow",
@@ -20,7 +24,9 @@ class Settings(BaseSettings):
         default="0x0000000000000000000000000000000000000000",
         alias="ESCROW_CONTRACT_ADDRESS",
     )
-    escrow_abi_path: str = Field(default="../contracts/out/FreelanceEscrow.sol/FreelanceEscrow.json")
+    escrow_abi_path: str = Field(
+        default="../contracts/out/FreelanceEscrow.sol/FreelanceEscrow.json"
+    )
     indexer_start_block: int = Field(default=0, alias="INDEXER_START_BLOCK")
     indexer_confirmations: int = 3
 

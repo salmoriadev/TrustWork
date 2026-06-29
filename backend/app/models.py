@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     BigInteger,
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
     Index,
     Numeric,
@@ -15,7 +14,11 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
+from sqlalchemy import (
+    Enum as SqlEnum,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -25,7 +28,7 @@ def enum_values(enum_class: type[enum.Enum]) -> list[str]:
     return [item.value for item in enum_class]
 
 
-class JobStatus(str, enum.Enum):
+class JobStatus(enum.StrEnum):
     created = "Created"
     funded = "Funded"
     in_progress = "InProgress"
@@ -35,7 +38,7 @@ class JobStatus(str, enum.Enum):
     resolved = "Resolved"
 
 
-class MilestoneStatus(str, enum.Enum):
+class MilestoneStatus(enum.StrEnum):
     pending = "Pending"
     submitted = "Submitted"
     approved = "Approved"
@@ -45,7 +48,7 @@ class MilestoneStatus(str, enum.Enum):
     resolved = "Resolved"
 
 
-class DisputeStatus(str, enum.Enum):
+class DisputeStatus(enum.StrEnum):
     opened = "Opened"
     resolved = "Resolved"
 
@@ -189,7 +192,9 @@ class IndexedEvent(Base):
     log_index: Mapped[int] = mapped_column(BigInteger)
     event_name: Mapped[str] = mapped_column(String(80))
     payload: Mapped[dict] = mapped_column(JSONB)
-    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    processed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class UserReputationSnapshot(Base):

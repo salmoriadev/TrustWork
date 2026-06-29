@@ -5,6 +5,7 @@ import type { MarketplaceJob, MilestoneStatus } from "../lib/types";
 const statusIcon: Record<MilestoneStatus, typeof Circle> = {
   Pending: Circle,
   Submitted: UploadCloud,
+  Approved: CheckCircle2,
   Released: CheckCircle2,
   RevisionRequested: FileWarning,
   Disputed: Scale,
