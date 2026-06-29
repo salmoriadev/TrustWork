@@ -1,3 +1,4 @@
+import hashlib
 from decimal import Decimal
 from time import time_ns
 
@@ -7,9 +8,20 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models import Job, SwipeAction, User, UserReputationSnapshot
+from app.models import (
+    Dispute,
+    EvidenceFile,
+    Job,
+    Milestone,
+    SwipeAction,
+    User,
+    UserReputationSnapshot,
+)
 from app.schemas import (
+    DisputeRead,
     EscrowConfigRead,
+    EvidenceCreateRequest,
+    EvidenceRead,
     IndexerPollRead,
     JobPrepareRead,
     JobPrepareRequest,
@@ -140,6 +152,68 @@ def list_matches(wallet_address: str, db: Session = Depends(get_db)) -> list[Mat
     return [MatchRead(swipe=swipe, job=job) for swipe, job in db.execute(stmt).all()]
 
 
+@router.post("/evidence", response_model=EvidenceRead)
+def create_evidence(
+    payload: EvidenceCreateRequest,
+    db: Session = Depends(get_db),
+) -> EvidenceFile:
+    if not _looks_like_address(payload.uploader_wallet):
+        raise HTTPException(status_code=422, detail="Invalid uploader wallet")
+    if db.get(Job, payload.job_id) is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if payload.milestone_id and db.get(Milestone, payload.milestone_id) is None:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    if payload.dispute_id and db.get(Dispute, payload.dispute_id) is None:
+        raise HTTPException(status_code=404, detail="Dispute not found")
+
+    body_bytes = payload.body.encode("utf-8")
+    sha256_hash = hashlib.sha256(body_bytes).hexdigest()
+    safe_name = payload.file_name.replace("/", "_").replace("\\", "_")
+    evidence = EvidenceFile(
+        job_id=payload.job_id,
+        milestone_id=payload.milestone_id,
+        dispute_id=payload.dispute_id,
+        uploader_wallet=payload.uploader_wallet.lower(),
+        storage_uri=f"local://evidence/{sha256_hash}/{safe_name}",
+        sha256_hash=sha256_hash,
+        content_type=payload.content_type,
+        size_bytes=len(body_bytes),
+        visibility=payload.visibility,
+    )
+    db.add(evidence)
+    db.commit()
+    db.refresh(evidence)
+    return evidence
+
+
+@router.get("/jobs/{job_id}/evidence", response_model=list[EvidenceRead])
+def list_job_evidence(job_id: str, db: Session = Depends(get_db)) -> list[EvidenceFile]:
+    job_uuid = _uuid_or_404(job_id, "Invalid job id")
+    stmt = (
+        select(EvidenceFile)
+        .where(EvidenceFile.job_id == job_uuid)
+        .order_by(EvidenceFile.created_at.desc())
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+@router.get("/disputes", response_model=list[DisputeRead])
+def list_disputes(db: Session = Depends(get_db)) -> list[Dispute]:
+    stmt = select(Dispute).order_by(Dispute.opened_at.desc()).limit(50)
+    return list(db.execute(stmt).scalars().all())
+
+
+@router.get("/disputes/{dispute_id}/evidence", response_model=list[EvidenceRead])
+def list_dispute_evidence(dispute_id: str, db: Session = Depends(get_db)) -> list[EvidenceFile]:
+    dispute_uuid = _uuid_or_404(dispute_id, "Invalid dispute id")
+    stmt = (
+        select(EvidenceFile)
+        .where(EvidenceFile.dispute_id == dispute_uuid)
+        .order_by(EvidenceFile.created_at.desc())
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
 @router.get("/jobs", response_model=list[JobRead])
 def list_jobs(db: Session = Depends(get_db)) -> list[Job]:
     stmt = (
@@ -190,3 +264,12 @@ def get_reputation(wallet_address: str, db: Session = Depends(get_db)) -> Reputa
 
 def _looks_like_address(value: str) -> bool:
     return value.startswith("0x") and len(value) == 42
+
+
+def _uuid_or_404(value: str, detail: str):
+    try:
+        from uuid import UUID
+
+        return UUID(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=detail) from exc

@@ -182,6 +182,25 @@ class Dispute(Base):
     milestone: Mapped[Milestone] = relationship(back_populates="disputes")
 
 
+class EvidenceFile(Base):
+    __tablename__ = "evidence_files"
+    __table_args__ = (Index("ix_evidence_files_job_id", "job_id"),)
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"))
+    milestone_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("milestones.id", ondelete="SET NULL")
+    )
+    dispute_id: Mapped[UUID | None] = mapped_column(ForeignKey("disputes.id", ondelete="SET NULL"))
+    uploader_wallet: Mapped[str] = mapped_column(String(42))
+    storage_uri: Mapped[str] = mapped_column(Text)
+    sha256_hash: Mapped[str] = mapped_column(String(64))
+    content_type: Mapped[str | None] = mapped_column(Text)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    visibility: Mapped[str] = mapped_column(String(32), default="private")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class IndexedEvent(Base):
     __tablename__ = "indexed_events"
     __table_args__ = (

@@ -50,6 +50,33 @@ class SwipeRead(BaseModel):
     created_at: datetime
 
 
+class EvidenceCreateRequest(BaseModel):
+    job_id: UUID
+    uploader_wallet: str = Field(min_length=42, max_length=42)
+    body: str = Field(min_length=1)
+    file_name: str = Field(default="evidence.txt", max_length=180)
+    milestone_id: UUID | None = None
+    dispute_id: UUID | None = None
+    content_type: str = "text/plain"
+    visibility: str = Field(default="private", pattern="^(private|participants|arbitrator)$")
+
+
+class EvidenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    job_id: UUID
+    milestone_id: UUID | None
+    dispute_id: UUID | None
+    uploader_wallet: str
+    storage_uri: str
+    sha256_hash: str
+    content_type: str | None
+    size_bytes: int | None
+    visibility: str
+    created_at: datetime
+
+
 class JobPrepareRequest(BaseModel):
     freelancer_wallet: str = Field(min_length=42, max_length=42)
     milestone_amounts_raw: list[int] = Field(min_length=1)
@@ -105,6 +132,22 @@ class JobRead(BaseModel):
 class MatchRead(BaseModel):
     job: JobRead
     swipe: SwipeRead
+
+
+class DisputeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    job_id: UUID
+    milestone_id: UUID
+    onchain_dispute_id: Decimal
+    opened_by_wallet: str
+    arbitrator_wallet: str
+    evidence_hash: str | None
+    freelancer_share_bps: int | None
+    status: str
+    opened_at: datetime
+    resolved_at: datetime | None
 
 
 class ReputationRead(BaseModel):

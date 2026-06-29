@@ -3,6 +3,7 @@ import { ArrowUpRight, MessageSquareText, TimerReset } from "lucide-react";
 
 import { EscrowActionPanel } from "./components/EscrowActionPanel";
 import { EscrowTimeline } from "./components/EscrowTimeline";
+import { EvidencePanel } from "./components/EvidencePanel";
 import { ProfilePanel } from "./components/ProfilePanel";
 import { ReputationPanel } from "./components/ReputationPanel";
 import { SwipeDeck } from "./components/SwipeDeck";
@@ -211,6 +212,7 @@ export default function App() {
           </div>
 
           <EscrowActionPanel activeJob={activeJob} onRefresh={reloadJobs} />
+          <EvidencePanel activeJob={activeJob} session={session} />
         </aside>
       </main>
     </div>

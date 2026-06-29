@@ -56,6 +56,20 @@ export interface MatchRead {
   };
 }
 
+export interface EvidenceRead {
+  id: string;
+  job_id: string;
+  milestone_id: string | null;
+  dispute_id: string | null;
+  uploader_wallet: string;
+  storage_uri: string;
+  sha256_hash: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  visibility: string;
+  created_at: string;
+}
+
 export async function fetchMarketplaceJobs(): Promise<MarketplaceJob[]> {
   const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
   const response = await fetch(`${baseUrl}/jobs`);
@@ -157,6 +171,44 @@ export async function fetchMatches(walletAddress: string): Promise<MarketplaceJo
   }
   const matches = (await response.json()) as MatchRead[];
   return matches.map((match) => toMarketplaceJob(match.job));
+}
+
+export async function createEvidence(params: {
+  jobId: string;
+  uploaderWallet: string;
+  body: string;
+  fileName?: string;
+  milestoneId?: string;
+  disputeId?: string;
+}): Promise<EvidenceRead> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/evidence`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      job_id: params.jobId,
+      uploader_wallet: params.uploaderWallet,
+      body: params.body,
+      file_name: params.fileName ?? "evidence.txt",
+      milestone_id: params.milestoneId,
+      dispute_id: params.disputeId,
+      content_type: "text/plain",
+      visibility: "private"
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  return (await response.json()) as EvidenceRead;
+}
+
+export async function fetchJobEvidence(jobId: string): Promise<EvidenceRead[]> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/jobs/${jobId}/evidence`);
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  return (await response.json()) as EvidenceRead[];
 }
 
 function apiBaseUrl(): string {

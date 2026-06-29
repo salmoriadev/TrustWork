@@ -1,5 +1,7 @@
 # Fase 04 - Evidencias e Disputas
 
+Status: iniciada em [RESULTADO-FASE-04.md](RESULTADO-FASE-04.md).
+
 ## Objetivo
 
 Implementar o fluxo de evidencias privadas e arbitragem humana centralizada previsto no MVP.
