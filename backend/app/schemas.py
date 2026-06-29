@@ -2,7 +2,34 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class EscrowConfigRead(BaseModel):
+    chain_id: int
+    escrow_contract_address: str
+    usdc_contract_address: str
+    escrow_arbitrator: str
+
+
+class JobPrepareRequest(BaseModel):
+    freelancer_wallet: str = Field(min_length=42, max_length=42)
+    milestone_amounts_raw: list[int] = Field(min_length=1)
+    job_id: int | None = None
+
+
+class JobPrepareRead(BaseModel):
+    chain_id: int
+    escrow_contract_address: str
+    usdc_contract_address: str
+    job_id: int
+    freelancer_wallet: str
+    milestone_amounts_raw: list[int]
+    total_amount_raw: int
+
+
+class IndexerPollRead(BaseModel):
+    latest_block: int
 
 
 class MilestoneRead(BaseModel):

@@ -1,5 +1,22 @@
 import type { MarketplaceJob, MilestoneStatus } from "./types";
 
+export interface EscrowConfig {
+  chain_id: number;
+  escrow_contract_address: string;
+  usdc_contract_address: string;
+  escrow_arbitrator: string;
+}
+
+export interface PreparedJob {
+  chain_id: number;
+  escrow_contract_address: string;
+  usdc_contract_address: string;
+  job_id: number;
+  freelancer_wallet: string;
+  milestone_amounts_raw: number[];
+  total_amount_raw: number;
+}
+
 interface ApiMilestone {
   onchain_milestone_id: string;
   sequence: number;
@@ -30,6 +47,48 @@ export async function fetchMarketplaceJobs(): Promise<MarketplaceJob[]> {
 
   const jobs = (await response.json()) as ApiJob[];
   return jobs.map(toMarketplaceJob);
+}
+
+export async function fetchEscrowConfig(): Promise<EscrowConfig> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/escrow/config`);
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  return (await response.json()) as EscrowConfig;
+}
+
+export async function prepareJob(params: {
+  freelancerWallet: string;
+  milestoneAmountsRaw: number[];
+  jobId?: number;
+}): Promise<PreparedJob> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/jobs/prepare`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      freelancer_wallet: params.freelancerWallet,
+      milestone_amounts_raw: params.milestoneAmountsRaw,
+      job_id: params.jobId
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  return (await response.json()) as PreparedJob;
+}
+
+export async function pollIndexer(): Promise<void> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/indexer/poll`, { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+}
+
+function apiBaseUrl(): string {
+  return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 }
 
 function toMarketplaceJob(job: ApiJob): MarketplaceJob {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, MessageSquareText, TimerReset } from "lucide-react";
 
+import { EscrowActionPanel } from "./components/EscrowActionPanel";
 import { EscrowTimeline } from "./components/EscrowTimeline";
 import { ReputationPanel } from "./components/ReputationPanel";
 import { SwipeDeck } from "./components/SwipeDeck";
@@ -16,6 +17,19 @@ export default function App() {
   const [matches, setMatches] = useState<number[]>([]);
   const [apiJobs, setApiJobs] = useState(jobs);
   const [dataSource, setDataSource] = useState<"api" | "mock">("mock");
+
+  async function reloadJobs() {
+    try {
+      const remoteJobs = await fetchMarketplaceJobs();
+      if (remoteJobs.length > 0) {
+        setApiJobs(remoteJobs);
+        setActiveIndex(0);
+        setDataSource("api");
+      }
+    } catch {
+      setDataSource("mock");
+    }
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -73,7 +87,7 @@ export default function App() {
         <SwipeDeck
           job={activeJob}
           index={activeIndex}
-          total={jobs.length}
+          total={apiJobs.length}
           onSkip={nextJob}
           onMatch={matchJob}
         />
@@ -133,6 +147,8 @@ export default function App() {
               </article>
             ))}
           </div>
+
+          <EscrowActionPanel activeJob={activeJob} onRefresh={reloadJobs} />
         </aside>
       </main>
     </div>

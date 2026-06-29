@@ -24,6 +24,14 @@ class Settings(BaseSettings):
         default="0x0000000000000000000000000000000000000000",
         alias="ESCROW_CONTRACT_ADDRESS",
     )
+    usdc_contract_address: str = Field(
+        default="0x0000000000000000000000000000000000000000",
+        alias="USDC_CONTRACT_ADDRESS",
+    )
+    escrow_arbitrator: str = Field(
+        default="0x0000000000000000000000000000000000000000",
+        alias="ESCROW_ARBITRATOR",
+    )
     escrow_abi_path: str = Field(
         default="../contracts/out/FreelanceEscrow.sol/FreelanceEscrow.json"
     )

@@ -1,5 +1,7 @@
 # Fase 02 - Fluxo Escrow Real
 
+Status: iniciada em [RESULTADO-FASE-02.md](RESULTADO-FASE-02.md).
+
 ## Objetivo
 
 Implementar o ciclo financeiro principal do MVP: criar job, aprovar USDC, fundear, submeter milestone, aprovar, pedir revisao, abrir disputa e liberar por timeout.
