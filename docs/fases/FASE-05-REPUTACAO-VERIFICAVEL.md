@@ -1,5 +1,7 @@
 # Fase 05 - Reputacao Verificavel
 
+Status: iniciada em 2026-06-29.
+
 ## Objetivo
 
 Implementar o diferencial de reputacao baseada em trabalho pago e eventos verificaveis do contrato.

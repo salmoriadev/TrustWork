@@ -28,6 +28,7 @@ export interface MarketplaceJob {
   id: number;
   title: string;
   client: string;
+  freelancerWallet?: string;
   budget: string;
   duration: string;
   skills: string[];

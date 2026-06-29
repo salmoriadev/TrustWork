@@ -8,8 +8,16 @@ import { ProfilePanel } from "./components/ProfilePanel";
 import { ReputationPanel } from "./components/ReputationPanel";
 import { SwipeDeck } from "./components/SwipeDeck";
 import { WalletBar } from "./components/WalletBar";
-import { createSwipe, fetchMarketplaceJobs, fetchMatches, upsertUserProfile } from "./lib/api";
+import {
+  createSwipe,
+  fetchMarketplaceJobs,
+  fetchMatches,
+  fetchReputation,
+  refreshReputation,
+  upsertUserProfile
+} from "./lib/api";
 import { jobs } from "./lib/mockData";
+import type { Reputation } from "./lib/types";
 import { connectWalletConnect, type WalletSession } from "./lib/wallet";
 
 export default function App() {
@@ -22,6 +30,7 @@ export default function App() {
   const [profileName, setProfileName] = useState("MatchEscrow User");
   const [rolePreference, setRolePreference] = useState<"client" | "freelancer" | "both">("both");
   const [profileStatus, setProfileStatus] = useState("Perfil ainda nao conectado.");
+  const [activeReputation, setActiveReputation] = useState<Reputation | null>(null);
 
   async function reloadJobs() {
     try {
@@ -59,10 +68,47 @@ export default function App() {
   }, []);
 
   const activeJob = apiJobs[activeIndex];
+  const displayedReputation = activeReputation ?? activeJob.reputation;
   const matchedJobs = useMemo(
     () => apiJobs.filter((job) => matches.includes(job.id)),
     [apiJobs, matches]
   );
+
+  useEffect(() => {
+    let ignore = false;
+    if (!activeJob.freelancerWallet) {
+      setActiveReputation(null);
+      return;
+    }
+
+    fetchReputation(activeJob.freelancerWallet)
+      .then((reputation) => {
+        if (!ignore) {
+          setActiveReputation(reputation);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setActiveReputation(null);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeJob]);
+
+  async function refreshActiveReputation() {
+    if (!activeJob.freelancerWallet) {
+      return;
+    }
+    try {
+      setActiveReputation(await refreshReputation(activeJob.freelancerWallet));
+      setProfileStatus("Reputacao verificavel recalculada.");
+    } catch (error) {
+      setProfileStatus(error instanceof Error ? error.message : "Falha ao recalcular reputacao.");
+    }
+  }
 
   function nextJob() {
     setActiveIndex((current) => (current + 1) % apiJobs.length);
@@ -172,7 +218,7 @@ export default function App() {
           </div>
 
           <EscrowTimeline job={activeJob} />
-          <ReputationPanel reputation={activeJob.reputation} />
+          <ReputationPanel reputation={displayedReputation} onRefresh={refreshActiveReputation} />
         </section>
 
         <aside className="bg-white p-4 md:p-5">

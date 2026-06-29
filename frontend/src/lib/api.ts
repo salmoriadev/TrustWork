@@ -1,4 +1,4 @@
-import type { MarketplaceJob, MilestoneStatus } from "./types";
+import type { MarketplaceJob, MilestoneStatus, Reputation } from "./types";
 
 export interface EscrowConfig {
   chain_id: number;
@@ -68,6 +68,16 @@ export interface EvidenceRead {
   size_bytes: number | null;
   visibility: string;
   created_at: string;
+}
+
+export interface ReputationRead {
+  wallet_address: string;
+  completed_jobs: number;
+  verified_volume_tier: string;
+  direct_approval_rate_bps: number;
+  dispute_rate_bps: number;
+  repeat_client_count: number;
+  updated_at: string | null;
 }
 
 export async function fetchMarketplaceJobs(): Promise<MarketplaceJob[]> {
@@ -211,6 +221,26 @@ export async function fetchJobEvidence(jobId: string): Promise<EvidenceRead[]> {
   return (await response.json()) as EvidenceRead[];
 }
 
+export async function fetchReputation(walletAddress: string): Promise<Reputation> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/reputation/${walletAddress}`);
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  return toReputation((await response.json()) as ReputationRead);
+}
+
+export async function refreshReputation(walletAddress: string): Promise<Reputation> {
+  const baseUrl = apiBaseUrl();
+  const response = await fetch(`${baseUrl}/reputation/${walletAddress}/refresh`, {
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  return toReputation((await response.json()) as ReputationRead);
+}
+
 function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 }
@@ -222,6 +252,7 @@ function toMarketplaceJob(job: ApiJob): MarketplaceJob {
     id,
     title: job.title ?? `Contrato on-chain #${id}`,
     client: shortWallet(job.client_wallet),
+    freelancerWallet: job.freelancer_wallet,
     budget: `USDC ${formatUsdc(job.total_amount_raw)}`,
     duration: `${job.milestones.length} milestones`,
     skills: ["Base", "USDC", "Escrow", "Indexed"],
@@ -259,4 +290,14 @@ function formatUsdc(raw: string): string {
 
 function shortWallet(wallet: string): string {
   return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+}
+
+function toReputation(reputation: ReputationRead): Reputation {
+  return {
+    completedJobs: reputation.completed_jobs,
+    volumeTier: reputation.verified_volume_tier,
+    directApprovalRate: reputation.direct_approval_rate_bps,
+    disputeRate: reputation.dispute_rate_bps,
+    repeatClients: reputation.repeat_client_count
+  };
 }

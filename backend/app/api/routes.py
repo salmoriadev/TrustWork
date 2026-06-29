@@ -34,6 +34,7 @@ from app.schemas import (
     UserUpsertRequest,
 )
 from app.services.event_indexer import EscrowEventIndexer
+from app.services.reputation import refresh_all_reputation_snapshots, refresh_reputation_snapshot
 
 router = APIRouter()
 
@@ -240,6 +241,8 @@ def get_job(onchain_job_id: int, db: Session = Depends(get_db)) -> Job:
 
 @router.get("/reputation/{wallet_address}", response_model=ReputationRead)
 def get_reputation(wallet_address: str, db: Session = Depends(get_db)) -> ReputationRead:
+    if not _looks_like_address(wallet_address):
+        raise HTTPException(status_code=422, detail="Invalid wallet")
     wallet = wallet_address.lower()
     snapshot = db.get(UserReputationSnapshot, wallet)
     if snapshot is None:
@@ -260,6 +263,39 @@ def get_reputation(wallet_address: str, db: Session = Depends(get_db)) -> Reputa
         repeat_client_count=snapshot.repeat_client_count,
         updated_at=snapshot.updated_at,
     )
+
+
+@router.post("/reputation/{wallet_address}/refresh", response_model=ReputationRead)
+def refresh_reputation(wallet_address: str, db: Session = Depends(get_db)) -> ReputationRead:
+    if not _looks_like_address(wallet_address):
+        raise HTTPException(status_code=422, detail="Invalid wallet")
+    snapshot = refresh_reputation_snapshot(db, wallet_address)
+    return ReputationRead(
+        wallet_address=snapshot.wallet_address,
+        completed_jobs=snapshot.completed_jobs,
+        verified_volume_tier=snapshot.verified_volume_tier,
+        direct_approval_rate_bps=snapshot.direct_approval_rate_bps,
+        dispute_rate_bps=snapshot.dispute_rate_bps,
+        repeat_client_count=snapshot.repeat_client_count,
+        updated_at=snapshot.updated_at,
+    )
+
+
+@router.post("/reputation/refresh-all", response_model=list[ReputationRead])
+def refresh_all_reputations(db: Session = Depends(get_db)) -> list[ReputationRead]:
+    snapshots = refresh_all_reputation_snapshots(db)
+    return [
+        ReputationRead(
+            wallet_address=snapshot.wallet_address,
+            completed_jobs=snapshot.completed_jobs,
+            verified_volume_tier=snapshot.verified_volume_tier,
+            direct_approval_rate_bps=snapshot.direct_approval_rate_bps,
+            dispute_rate_bps=snapshot.dispute_rate_bps,
+            repeat_client_count=snapshot.repeat_client_count,
+            updated_at=snapshot.updated_at,
+        )
+        for snapshot in snapshots
+    ]
 
 
 def _looks_like_address(value: str) -> bool:

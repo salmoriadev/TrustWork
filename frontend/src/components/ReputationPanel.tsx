@@ -2,12 +2,27 @@ import { BadgeCheck, Repeat2, ShieldAlert, TrendingUp } from "lucide-react";
 
 import type { Reputation } from "../lib/types";
 
-export function ReputationPanel({ reputation }: { reputation: Reputation }) {
+export function ReputationPanel({
+  reputation,
+  onRefresh
+}: {
+  reputation: Reputation;
+  onRefresh?: () => void;
+}) {
   return (
     <section className="bg-white p-4 md:p-5">
       <div className="mb-4">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Reputacao</p>
         <h2 className="text-lg font-semibold text-ink">Sinais verificaveis</h2>
+        {onRefresh ? (
+          <button
+            className="mt-2 rounded-md border border-line bg-app px-2 py-1 text-xs font-semibold text-ink"
+            type="button"
+            onClick={onRefresh}
+          >
+            Recalcular snapshot
+          </button>
+        ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
