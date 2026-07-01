@@ -71,7 +71,7 @@ export function EscrowActionPanel({ activeJob, onRefresh }: EscrowActionPanelPro
   const selectedMilestoneId = Number(milestoneId);
 
   return (
-    <section className="card-flat p-4 mt-4">
+    <section className="card-flat p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Acoes escrow</p>
