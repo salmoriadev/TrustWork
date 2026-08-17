@@ -29,7 +29,7 @@ cleanup() {
     info "Pronto."
 }
 
-kill_port() {
+ensure_port_free() {
     local port="$1" name="$2"
     # Tenta ss, depois lsof, depois fuser
     local pid
@@ -41,12 +41,12 @@ kill_port() {
         pid=$(fuser "$port/tcp" 2>/dev/null || true)
     fi
     if [ -n "$pid" ] && [ "$pid" != "0" ]; then
-        warn "${name} ja usando porta ${port} (pid ${pid}) — matando..."
-        kill "$pid" 2>/dev/null || true
-        sleep 1
+        err "${name} ja usa a porta ${port} (pid ${pid}); escolha outra porta ou encerre o processo"
+        exit 1
     fi
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 # ─── 1. Verificar dependencias ──────────────────────
 info "Verificando dependencias..."
@@ -74,7 +74,7 @@ done
 ok "Redis pronto"
 
 # ─── 3. Subir Anvil ──────────────────────────────────
-kill_port "$ANVIL_PORT" "Anvil"
+ensure_port_free "$ANVIL_PORT" "Anvil"
 info "Iniciando Anvil na porta ${ANVIL_PORT}..."
 anvil --host 0.0.0.0 --port "$ANVIL_PORT" > /tmp/anvil.log 2>&1 &
 ANVIL_PID=$!
@@ -117,6 +117,7 @@ ok "Job demo criado"
 
 # ─── 5. Subir backend ────────────────────────────────
 cd "$ROOT/backend"
+ensure_port_free "$BACKEND_PORT" "Backend"
 info "Iniciando backend na porta ${BACKEND_PORT}..."
 export CHAIN_ID=31337
 export RPC_URL="http://127.0.0.1:${ANVIL_PORT}"
@@ -129,18 +130,31 @@ export REDIS_URL="redis://localhost:${REDIS_PORT}/0"
 export API_CORS_ORIGINS="http://localhost:${FRONTEND_PORT}"
 export INDEXER_START_BLOCK=0
 
-.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" > /dev/null 2>&1 &
+BACKEND_LOG="${TMPDIR:-/tmp}/trustwork-backend.log"
+.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
-sleep 2
-kill -0 "$BACKEND_PID" 2>/dev/null || { err "Backend nao iniciou"; exit 1; }
-ok "Backend rodando em :${BACKEND_PORT} (pid ${BACKEND_PID})"
-
-# Verificar health
-curl -sf "http://127.0.0.1:${BACKEND_PORT}/health" > /dev/null && ok "Health check OK"
+for i in $(seq 1 30); do
+    if curl -sf "http://127.0.0.1:${BACKEND_PORT}/health" > /dev/null; then
+        ok "Backend rodando em :${BACKEND_PORT} (pid ${BACKEND_PID})"
+        ok "Health check OK"
+        break
+    fi
+    if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+        err "Backend encerrou durante o startup. Log:"
+        sed 's/^/  /' "$BACKEND_LOG" >&2
+        exit 1
+    fi
+    if [ "$i" -eq 30 ]; then
+        err "Backend nao ficou pronto em 30 segundos. Log:"
+        sed 's/^/  /' "$BACKEND_LOG" >&2
+        exit 1
+    fi
+    sleep 1
+done
 
 # ─── 6. Indexar eventos ──────────────────────────────
 info "Indexando eventos on-chain..."
-curl -s -X POST "http://127.0.0.1:${BACKEND_PORT}/indexer/poll" | sed 's/^/  /'
+curl -fsS -X POST "http://127.0.0.1:${BACKEND_PORT}/indexer/poll" | sed 's/^/  /'
 ok "Eventos indexados"
 
 # Verificar se o job apareceu
@@ -149,16 +163,33 @@ echo "$JOBS" | python3 -c "import sys,json; data=json.load(sys.stdin); print(f' 
 
 # ─── 7. Subir frontend ────────────────────────────────
 cd "$ROOT/frontend"
+ensure_port_free "$FRONTEND_PORT" "Frontend"
 info "Iniciando frontend na porta ${FRONTEND_PORT}..."
+FRONTEND_LOG="${TMPDIR:-/tmp}/trustwork-frontend.log"
 VITE_API_BASE_URL="http://localhost:${BACKEND_PORT}" \
 VITE_CHAIN_ID=31337 \
 VITE_ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDR" \
 VITE_USDC_CONTRACT_ADDRESS="$USDC_ADDR" \
-npm run dev -- --port "$FRONTEND_PORT" > /dev/null 2>&1 &
+VITE_ENABLE_DEMO_DATA=false \
+npm run dev -- --port "$FRONTEND_PORT" > "$FRONTEND_LOG" 2>&1 &
 FRONTEND_PID=$!
-sleep 3
-kill -0 "$FRONTEND_PID" 2>/dev/null || { err "Frontend nao iniciou"; exit 1; }
-ok "Frontend rodando em :${FRONTEND_PORT} (pid ${FRONTEND_PID})"
+for i in $(seq 1 30); do
+    if curl -sf "http://127.0.0.1:${FRONTEND_PORT}/" > /dev/null; then
+        ok "Frontend rodando em :${FRONTEND_PORT} (pid ${FRONTEND_PID})"
+        break
+    fi
+    if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+        err "Frontend encerrou durante o startup. Log:"
+        sed 's/^/  /' "$FRONTEND_LOG" >&2
+        exit 1
+    fi
+    if [ "$i" -eq 30 ]; then
+        err "Frontend nao ficou pronto em 30 segundos. Log:"
+        sed 's/^/  /' "$FRONTEND_LOG" >&2
+        exit 1
+    fi
+    sleep 1
+done
 
 # ─── 8. Sumario ──────────────────────────────────────
 echo ""
