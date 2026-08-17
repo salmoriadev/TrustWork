@@ -1,5 +1,10 @@
 # Status do MVP
 
+> **Atualizacao de 2026-08-03:** este documento preserva o status declarado durante as fases do
+> MVP. A verificacao atual do codigo, incluindo mocks e bloqueadores de producao, esta em
+> [Diagnostico Atual](producao/00-DIAGNOSTICO-ATUAL.md). O plano vigente esta na
+> [Trilha de Producao](producao/README.md).
+
 Este documento resume o que ja foi implementado e o que ainda precisa ser feito para transformar a base atual em um MVP demonstravel de ponta a ponta.
 
 ## Ja implementado

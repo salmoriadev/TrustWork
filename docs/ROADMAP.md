@@ -1,5 +1,9 @@
 # Roadmap Tecnico
 
+> **Documento historico do MVP.** O roadmap vigente para deploy e comercializacao esta em
+> [Roadmap de Producao](producao/ROADMAP-PRODUCAO.md), com as fases 10-18, dependencias e release
+> gates objetivos. Os itens abaixo permanecem como registro da direcao original.
+
 ## Fase 1 - MVP controlado
 
 - Base Sepolia como staging.

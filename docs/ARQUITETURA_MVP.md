@@ -1,5 +1,9 @@
 # Arquitetura do MVP
 
+> **Arquitetura historica do MVP.** A topologia, fronteiras de confianca e contratos de dados
+> requeridos para producao estao em
+> [Arquitetura-Alvo de Producao](producao/01-ARQUITETURA-ALVO.md).
+
 ## Visao geral
 
 O MVP e um marketplace freelance com descoberta por swipe e escrow em USDC na Base. A camada on-chain atua apenas como infraestrutura de confianca: custodia programatica, maquina de estados, liquidacao financeira e hashes de integridade. Toda experiencia rica de produto permanece off-chain: chat, arquivos, recomendacao, swipe, moderacao, PII e detalhes privados de reputacao.

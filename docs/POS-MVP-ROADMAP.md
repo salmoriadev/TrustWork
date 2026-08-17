@@ -1,5 +1,9 @@
 # Roadmap Pos-MVP
 
+> **Documento historico.** Account abstraction, API publica e expansoes abaixo continuam como
+> ideias futuras, mas nao antecedem os bloqueadores de producao. A sequencia vigente e o
+> [Roadmap de Producao - fases 10 a 18](producao/ROADMAP-PRODUCAO.md).
+
 Priorizado com base no white paper, canvas e aprendizados das fases 00-08.
 
 ## Fase 09-A — Onboarding sem Fricao (prioridade maxima)

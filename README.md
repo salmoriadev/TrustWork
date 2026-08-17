@@ -18,12 +18,42 @@ O principio central do projeto e manter aplicacao, recomendacao, chat, arquivos 
 
 ## Comeco rapido
 
-### 1. Contratos
+### 1. Preparar o checkout
+
+Requisitos: Git, Node.js 20+, npm, Python 3.11+, [uv](https://docs.astral.sh/uv/) e Foundry 1.7.1.
 
 ```bash
-cd contracts
-forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts
-forge test
+./scripts/bootstrap.sh
+```
+
+O comando inicializa os submodulos nas revisoes de `contracts/foundry.lock`, sincroniza o backend
+por `backend/uv.lock`, instala o frontend com `npm ci` e compila os contratos.
+
+### 2. Validar tudo
+
+Com PostgreSQL disponivel conforme `DATABASE_URL`:
+
+```bash
+./scripts/check.sh
+```
+
+Para validar tambem RPC, chain ID e bytecode dos contratos configurados, use
+`VALIDATE_CHAIN=1 ./scripts/check.sh` em staging ou producao.
+
+### 3. Executar a stack local
+
+```bash
+./demo.sh
+```
+
+O script sobe Postgres, Redis, Anvil, contratos, API e frontend. Ele encerra somente os processos
+que iniciou e falha caso uma porta necessaria ja esteja ocupada.
+
+### Execucao manual dos contratos
+
+```bash
+git submodule update --init --recursive
+forge test --root contracts
 ```
 
 Para rodar localmente como se fosse Ganache, use o Anvil:
@@ -41,21 +71,19 @@ forge script script/DeployLocal.s.sol:DeployLocal --rpc-url http://127.0.0.1:854
 
 O script local deploya um `MockUSDC` e o contrato `FreelanceEscrow`. Depois do deploy, copie os enderecos impressos para `.env`.
 
-### 2. Backend
+### Execucao manual do backend
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload
+uv sync --extra dev --locked
+uv run uvicorn app.main:app --reload
 ```
 
-### 3. Frontend
+### Execucao manual do frontend
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -64,6 +92,9 @@ npm run dev
 - [Arquitetura do MVP](docs/ARQUITETURA_MVP.md)
 - [Schema PostgreSQL](docs/DATABASE_SCHEMA.md)
 - [Status e pendencias do MVP](docs/MVP_STATUS.md)
+- [Trilha de producao e comercializacao](docs/producao/README.md)
+- [Roadmap de producao - fases 10 a 18](docs/producao/ROADMAP-PRODUCAO.md)
+- [Release gates](docs/producao/RELEASE-GATES.md)
 - [Contrato Escrow](contracts/src/FreelanceEscrow.sol)
 - [Backend README](backend/README.md)
 - [Frontend README](frontend/README.md)
@@ -81,14 +112,18 @@ Este repositorio ja contem uma base inicial funcional para evoluir o MVP:
 - Docker Compose para Postgres e Redis.
 - `.env.example` com variaveis necessarias sem expor segredos.
 
+## Proximo ciclo
+
+As fases 00-09 registram a construcao historica do MVP. O trabalho necessario para completar
+identidade, wallet, evidencias, contrato, operacao e compliance esta detalhado na
+[trilha de producao](docs/producao/README.md). Esse documento e a fonte vigente para planejar um
+deploy comercial.
+
 ## O que ainda falta para fechar o MVP
 
-- Instalar Foundry localmente para compilar, testar e fazer deploy dos contratos.
-- Rodar `forge test` e corrigir qualquer incompatibilidade de versao/dependencia.
-- Subir Anvil, deployar `MockUSDC` + `FreelanceEscrow` e salvar os enderecos no `.env`.
-- Conectar o frontend aos endpoints reais do backend, removendo mocks da tela principal.
-- Ligar o backend ao contrato local via RPC e rodar o indexer continuamente.
-- Criar fluxo completo de criacao de job, aprovacao de USDC, funding, submit, approve, dispute e timeout.
+- Integrar WalletConnect ao mesmo provider usado pelas escritas e acompanhar receipts/reverts.
+- Tornar o indexador continuo, autenticado, resiliente a reorg e operavel em staging.
+- Completar a jornada de criacao, funding, submit, approve, dispute e timeout com estados reais.
 - Implementar storage privado para entregas/evidencias.
 - Criar autenticacao por wallet de ponta a ponta.
 - Adicionar migracoes de banco e scripts de seed para demo.
