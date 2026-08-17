@@ -1,8 +1,24 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+
+UINT256_MAX = 2**256 - 1
+
+
+def validate_uint256(value: str) -> str:
+    if int(value) > UINT256_MAX:
+        raise ValueError("value exceeds uint256")
+    return value
+
+
+Uint256String = Annotated[
+    str,
+    Field(pattern=r"^(0|[1-9][0-9]*)$", max_length=78),
+    AfterValidator(validate_uint256),
+]
 
 
 class EscrowConfigRead(BaseModel):
@@ -79,18 +95,18 @@ class EvidenceRead(BaseModel):
 
 class JobPrepareRequest(BaseModel):
     freelancer_wallet: str = Field(min_length=42, max_length=42)
-    milestone_amounts_raw: list[int] = Field(min_length=1)
-    job_id: int | None = None
+    milestone_amounts_raw: list[Uint256String] = Field(min_length=1)
+    job_id: Uint256String | None = None
 
 
 class JobPrepareRead(BaseModel):
     chain_id: int
     escrow_contract_address: str
     usdc_contract_address: str
-    job_id: int
+    job_id: Uint256String
     freelancer_wallet: str
-    milestone_amounts_raw: list[int]
-    total_amount_raw: int
+    milestone_amounts_raw: list[Uint256String]
+    total_amount_raw: Uint256String
 
 
 class IndexerPollRead(BaseModel):

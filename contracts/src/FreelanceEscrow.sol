@@ -106,10 +106,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         uint256 milestoneCount
     );
     event MilestoneCreated(
-        uint256 indexed jobId,
-        uint256 indexed milestoneId,
-        uint256 amount,
-        uint256 sequence
+        uint256 indexed jobId, uint256 indexed milestoneId, uint256 amount, uint256 sequence
     );
     event JobFunded(uint256 indexed jobId, address indexed client, uint256 amount);
     event MilestoneSubmitted(
@@ -120,10 +117,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         uint64 reviewDeadline
     );
     event MilestoneApproved(
-        uint256 indexed jobId,
-        uint256 indexed milestoneId,
-        uint256 grossAmount,
-        uint256 platformFee
+        uint256 indexed jobId, uint256 indexed milestoneId, uint256 grossAmount, uint256 platformFee
     );
     event RevisionRequested(
         uint256 indexed jobId,
@@ -155,19 +149,12 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         uint256 amount,
         uint256 platformFee
     );
-    event JobCancelled(
-        uint256 indexed jobId,
-        uint256 clientRefund,
-        uint256 freelancerGrossPayout
-    );
+    event JobCancelled(uint256 indexed jobId, uint256 clientRefund, uint256 freelancerGrossPayout);
     event PlatformFeeCollected(
-        uint256 indexed jobId,
-        uint256 indexed milestoneId,
-        address indexed token,
-        uint256 amount
+        uint256 indexed jobId, uint256 indexed milestoneId, address indexed token, uint256 amount
     );
     event PlatformFeeUpdated(uint16 oldFeeBps, uint16 newFeeBps);
-    event FeeRecipientUpdated(address oldRecipient, address newRecipient);
+    event FeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
     event MaxJobAmountUpdated(uint256 oldMaxJobAmount, uint256 newMaxJobAmount);
 
     error ZeroAddress();
@@ -195,12 +182,10 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         address feeRecipient_,
         uint16 platformFeeBps_,
         uint256 maxJobAmount_
-    )
-        EIP712("FreelanceEscrow", "1")
-    {
+    ) EIP712("FreelanceEscrow", "1") {
         if (
-            acceptedToken_ == address(0) || admin == address(0)
-                || initialArbitrator == address(0) || feeRecipient_ == address(0)
+            acceptedToken_ == address(0) || admin == address(0) || initialArbitrator == address(0)
+                || feeRecipient_ == address(0)
         ) {
             revert ZeroAddress();
         }
@@ -222,17 +207,14 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         address freelancer,
         address token,
         uint256[] calldata milestoneAmounts
-    )
-        external
-        whenNotPaused
-    {
+    ) external whenNotPaused {
         if (jobId == 0) revert InvalidAmount();
         if (jobExists[jobId]) revert JobAlreadyExists();
         if (freelancer == address(0) || freelancer == msg.sender) revert ZeroAddress();
         if (token != acceptedToken) revert InvalidToken();
         if (milestoneAmounts.length == 0) revert InvalidAmount();
 
-        uint256 totalAmount;
+        uint256 totalAmount = 0;
         for (uint256 i = 0; i < milestoneAmounts.length; i++) {
             if (milestoneAmounts[i] == 0) revert InvalidAmount();
             totalAmount += milestoneAmounts[i];
@@ -280,10 +262,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         emit JobFunded(jobId, msg.sender, job.totalAmount);
     }
 
-    function submitMilestone(
-        uint256 milestoneId,
-        bytes32 evidenceHash
-    )
+    function submitMilestone(uint256 milestoneId, bytes32 evidenceHash)
         external
         whenNotPaused
         existingMilestone(milestoneId)
@@ -312,17 +291,11 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         job.status = JobStatus.InProgress;
 
         emit MilestoneSubmitted(
-            milestone.jobId,
-            milestoneId,
-            evidenceHash,
-            submittedAt,
-            reviewDeadline
+            milestone.jobId, milestoneId, evidenceHash, submittedAt, reviewDeadline
         );
     }
 
-    function approveMilestone(
-        uint256 milestoneId
-    )
+    function approveMilestone(uint256 milestoneId)
         external
         nonReentrant
         whenNotPaused
@@ -342,10 +315,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         _refreshJobStatusAfterMilestoneFinalized(job.jobId);
     }
 
-    function requestRevision(
-        uint256 milestoneId,
-        bytes32 evidenceHash
-    )
+    function requestRevision(uint256 milestoneId, bytes32 evidenceHash)
         external
         whenNotPaused
         existingMilestone(milestoneId)
@@ -362,11 +332,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         emit RevisionRequested(job.jobId, milestoneId, msg.sender, evidenceHash);
     }
 
-    function openDispute(
-        uint256 milestoneId,
-        address arbitrator,
-        bytes32 evidenceHash
-    )
+    function openDispute(uint256 milestoneId, address arbitrator, bytes32 evidenceHash)
         external
         whenNotPaused
         existingMilestone(milestoneId)
@@ -407,11 +373,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         emit DisputeOpened(disputeId, job.jobId, milestoneId, msg.sender, arbitrator, evidenceHash);
     }
 
-    function resolveDispute(
-        uint256 disputeId,
-        uint16 freelancerShareBps,
-        bytes32 evidenceHash
-    )
+    function resolveDispute(uint256 disputeId, uint16 freelancerShareBps, bytes32 evidenceHash)
         external
         nonReentrant
         whenNotPaused
@@ -462,9 +424,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         _refreshJobStatusAfterMilestoneFinalized(job.jobId);
     }
 
-    function releaseAfterTimeout(
-        uint256 milestoneId
-    )
+    function releaseAfterTimeout(uint256 milestoneId)
         external
         nonReentrant
         whenNotPaused
@@ -491,13 +451,10 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         uint256 deadline,
         bytes calldata clientSignature,
         bytes calldata freelancerSignature
-    )
-        external
-        nonReentrant
-        whenNotPaused
-        existingJob(jobId)
-    {
-        if (block.timestamp > deadline) revert SignatureExpired();
+    ) external nonReentrant whenNotPaused existingJob(jobId) {
+        if (block.timestamp > deadline) {
+            revert SignatureExpired();
+        }
 
         Job storage job = jobs[jobId];
         if (
@@ -507,7 +464,8 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
             revert InvalidStatus();
         }
 
-        uint256 remaining = job.status == JobStatus.Created ? 0 : job.totalAmount - job.releasedAmount;
+        uint256 remaining =
+            job.status == JobStatus.Created ? 0 : job.totalAmount - job.releasedAmount;
         if (clientRefund + freelancerPayout != remaining) revert InvalidAmount();
 
         bytes32 digest = hashMutualCancel(jobId, clientRefund, freelancerPayout, deadline);
@@ -571,11 +529,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         uint256 clientRefund,
         uint256 freelancerPayout,
         uint256 deadline
-    )
-        public
-        view
-        returns (bytes32)
-    {
+    ) public view returns (bytes32) {
         return _hashTypedDataV4(
             keccak256(
                 abi.encode(
@@ -594,9 +548,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         return jobs[jobId];
     }
 
-    function getMilestone(
-        uint256 milestoneId
-    )
+    function getMilestone(uint256 milestoneId)
         external
         view
         existingMilestone(milestoneId)
@@ -605,21 +557,13 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         return milestones[milestoneId];
     }
 
-    function getDispute(
-        uint256 disputeId
-    )
-        external
-        view
-        returns (Dispute memory)
-    {
+    function getDispute(uint256 disputeId) external view returns (Dispute memory) {
         Dispute memory dispute = disputes[disputeId];
         if (dispute.disputeId == 0) revert DisputeNotFound();
         return dispute;
     }
 
-    function getJobMilestones(
-        uint256 jobId
-    )
+    function getJobMilestones(uint256 jobId)
         external
         view
         existingJob(jobId)
@@ -628,11 +572,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         return jobMilestoneIds[jobId];
     }
 
-    function _payFreelancer(
-        Job storage job,
-        uint256 milestoneId,
-        uint256 grossAmount
-    )
+    function _payFreelancer(Job storage job, uint256 milestoneId, uint256 grossAmount)
         private
         returns (uint256 fee)
     {
@@ -661,13 +601,7 @@ contract FreelanceEscrow is AccessControl, Pausable, ReentrancyGuard, EIP712 {
         job.status = jobHadDispute[jobId] ? JobStatus.Resolved : JobStatus.Completed;
     }
 
-    function _isFinalMilestoneStatus(
-        MilestoneStatus status
-    )
-        private
-        pure
-        returns (bool)
-    {
+    function _isFinalMilestoneStatus(MilestoneStatus status) private pure returns (bool) {
         return status == MilestoneStatus.Released || status == MilestoneStatus.Resolved;
     }
 

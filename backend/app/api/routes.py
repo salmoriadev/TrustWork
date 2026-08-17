@@ -5,6 +5,7 @@ from time import time_ns
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
+from web3 import Web3
 
 from app.core.config import settings
 from app.db.session import get_db
@@ -94,25 +95,29 @@ def upsert_user(
 def prepare_job(payload: JobPrepareRequest) -> JobPrepareRead:
     if not _looks_like_address(payload.freelancer_wallet):
         raise HTTPException(status_code=422, detail="Invalid freelancer wallet")
-    if any(amount <= 0 for amount in payload.milestone_amounts_raw):
+    try:
+        milestone_amounts = [int(amount) for amount in payload.milestone_amounts_raw]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Milestone amounts must be integers") from exc
+    if any(amount <= 0 for amount in milestone_amounts):
         raise HTTPException(status_code=422, detail="Milestone amounts must be positive")
 
-    total = sum(payload.milestone_amounts_raw)
+    total = sum(milestone_amounts)
     if total > settings.max_job_amount_raw:
         raise HTTPException(
             status_code=422,
             detail=f"Total amount {total} exceeds max job amount {settings.max_job_amount_raw}",
         )
 
-    job_id = payload.job_id or time_ns()
+    job_id = payload.job_id or str(time_ns())
     return JobPrepareRead(
         chain_id=settings.chain_id,
         escrow_contract_address=settings.escrow_contract_address,
         usdc_contract_address=settings.usdc_contract_address,
         job_id=job_id,
         freelancer_wallet=payload.freelancer_wallet.lower(),
-        milestone_amounts_raw=payload.milestone_amounts_raw,
-        total_amount_raw=sum(payload.milestone_amounts_raw),
+        milestone_amounts_raw=[str(amount) for amount in milestone_amounts],
+        total_amount_raw=str(total),
     )
 
 
@@ -351,7 +356,7 @@ def funnel_metrics(db: Session = Depends(get_db)) -> FunnelMetricsRead:
 
 
 def _looks_like_address(value: str) -> bool:
-    return value.startswith("0x") and len(value) == 42
+    return Web3.is_address(value)
 
 
 def _uuid_or_404(value: str, detail: str):

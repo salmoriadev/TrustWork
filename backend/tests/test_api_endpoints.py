@@ -62,3 +62,46 @@ def test_rejects_invalid_wallet_for_user_update(client: TestClient) -> None:
         json={"display_name": "Bad", "role_preference": "both", "profile_visibility": "public"},
     )
     assert response.status_code == 422
+
+
+def test_prepare_job_preserves_uint256_string(client: TestClient) -> None:
+    job_id = "18446744073709551617"
+    response = client.post(
+        "/jobs/prepare",
+        json={
+            "freelancer_wallet": "0x00000000000000000000000000000000000000bb",
+            "milestone_amounts_raw": ["1200000001", "800000000"],
+            "job_id": job_id,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["job_id"] == job_id
+    assert payload["milestone_amounts_raw"] == ["1200000001", "800000000"]
+    assert payload["total_amount_raw"] == "2000000001"
+
+
+def test_prepare_job_rejects_non_decimal_uint256(client: TestClient) -> None:
+    response = client.post(
+        "/jobs/prepare",
+        json={
+            "freelancer_wallet": "0x00000000000000000000000000000000000000bb",
+            "milestone_amounts_raw": ["1.5"],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_prepare_job_rejects_uint256_overflow(client: TestClient) -> None:
+    response = client.post(
+        "/jobs/prepare",
+        json={
+            "freelancer_wallet": "0x00000000000000000000000000000000000000bb",
+            "milestone_amounts_raw": ["1"],
+            "job_id": str(2**256),
+        },
+    )
+
+    assert response.status_code == 422

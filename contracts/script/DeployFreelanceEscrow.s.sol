@@ -15,12 +15,7 @@ contract DeployFreelanceEscrow is Script {
 
         vm.startBroadcast();
         escrow = new FreelanceEscrow(
-            acceptedToken,
-            admin,
-            arbitrator,
-            feeRecipient,
-            platformFeeBps,
-            maxJobAmount
+            acceptedToken, admin, arbitrator, feeRecipient, platformFeeBps, maxJobAmount
         );
         vm.stopBroadcast();
     }

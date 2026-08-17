@@ -25,12 +25,7 @@ contract DeployLocal is Script {
         usdc = new MockUSDC();
         usdc.mint(deployer, INITIAL_MINT);
         escrow = new FreelanceEscrow(
-            address(usdc),
-            admin,
-            arbitrator,
-            feeRecipient,
-            platformFeeBps,
-            maxJobAmount
+            address(usdc), admin, arbitrator, feeRecipient, platformFeeBps, maxJobAmount
         );
         vm.stopBroadcast();
 

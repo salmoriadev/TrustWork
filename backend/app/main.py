@@ -8,7 +8,7 @@ from app.core.config import settings
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Freelance Escrow API",
-        version="0.1.0",
+        version="1.0.0",
         description="Off-chain API and event projection layer for the escrow marketplace.",
     )
     app.add_middleware(

@@ -21,14 +21,7 @@ contract FreelanceEscrowTest is Test {
         client = vm.addr(clientPk);
         freelancer = vm.addr(freelancerPk);
         usdc = new MockUSDC();
-        escrow = new FreelanceEscrow(
-            address(usdc),
-            admin,
-            arbitrator,
-            feeRecipient,
-            500,
-            10_000e6
-        );
+        escrow = new FreelanceEscrow(address(usdc), admin, arbitrator, feeRecipient, 500, 10_000e6);
 
         usdc.mint(client, 10_000e6);
         vm.prank(client);
@@ -44,6 +37,18 @@ contract FreelanceEscrowTest is Test {
         FreelanceEscrow.Job memory job = escrow.getJob(1);
         assertEq(uint256(job.status), uint256(FreelanceEscrow.JobStatus.Funded));
         assertEq(usdc.balanceOf(address(escrow)), 1_000e6);
+    }
+
+    function testPreservesJobIdAboveJavaScriptSafeInteger() public {
+        uint256 jobId = 18_446_744_073_709_551_617;
+        _createJob(jobId, _amounts(1_000e6));
+
+        vm.prank(client);
+        escrow.fundJob(jobId);
+
+        FreelanceEscrow.Job memory job = escrow.getJob(jobId);
+        assertEq(job.jobId, jobId);
+        assertEq(uint256(job.status), uint256(FreelanceEscrow.JobStatus.Funded));
     }
 
     function testApproveMilestonePaysFreelancerAndFee() public {
@@ -129,10 +134,19 @@ contract FreelanceEscrowTest is Test {
         _createJob(1, _amounts(10_001e6));
     }
 
-    function _fundAndSubmitOneMilestone(
-        uint256 jobId,
-        uint256 amount
-    )
+    function testFuzzFundingPreservesExactAmount(uint96 rawAmount) public {
+        uint256 amount = bound(uint256(rawAmount), 1, 10_000e6);
+        _createJob(1, _amounts(amount));
+
+        vm.prank(client);
+        escrow.fundJob(1);
+
+        FreelanceEscrow.Job memory job = escrow.getJob(1);
+        assertEq(job.totalAmount, amount);
+        assertEq(usdc.balanceOf(address(escrow)), amount);
+    }
+
+    function _fundAndSubmitOneMilestone(uint256 jobId, uint256 amount)
         private
         returns (uint256 milestoneId)
     {
@@ -158,10 +172,7 @@ contract FreelanceEscrowTest is Test {
         amounts[0] = amount;
     }
 
-    function _amounts2(
-        uint256 first,
-        uint256 second
-    )
+    function _amounts2(uint256 first, uint256 second)
         private
         pure
         returns (uint256[] memory amounts)

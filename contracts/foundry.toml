@@ -13,3 +13,11 @@ via_ir = true
 line_length = 100
 tab_width = 4
 bracket_spacing = true
+
+[fuzz]
+runs = 256
+
+[invariant]
+runs = 64
+depth = 32
+fail_on_revert = true

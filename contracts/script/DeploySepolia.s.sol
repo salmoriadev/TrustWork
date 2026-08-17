@@ -19,12 +19,7 @@ contract DeploySepolia is Script {
 
         vm.startBroadcast(deployerPrivateKey);
         escrow = new FreelanceEscrow(
-            BASE_SEPOLIA_USDC,
-            admin,
-            arbitrator,
-            feeRecipient,
-            platformFeeBps,
-            maxJobAmount
+            BASE_SEPOLIA_USDC, admin, arbitrator, feeRecipient, platformFeeBps, maxJobAmount
         );
         vm.stopBroadcast();
 
