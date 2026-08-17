@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FileCheck2, RefreshCw } from "lucide-react";
 
 import { createEvidence, fetchJobEvidence, type EvidenceRead } from "../lib/api";
@@ -16,18 +16,18 @@ export function EvidencePanel({ activeJob, session }: EvidencePanelProps) {
   const [evidence, setEvidence] = useState<EvidenceRead[]>([]);
   const [status, setStatus] = useState("Evidencias privadas ficam off-chain; apenas hashes vao ao contrato.");
 
-  async function reloadEvidence() {
+  const reloadEvidence = useCallback(async () => {
     if (!activeJob.dbId) {
       setEvidence([]);
       return;
     }
     const nextEvidence = await fetchJobEvidence(activeJob.dbId);
     setEvidence(nextEvidence);
-  }
+  }, [activeJob.dbId]);
 
   useEffect(() => {
     reloadEvidence().catch(() => setStatus("Nao foi possivel carregar evidencias."));
-  }, [activeJob.dbId]);
+  }, [reloadEvidence]);
 
   async function handleCreateEvidence() {
     if (!session) {
@@ -54,11 +54,11 @@ export function EvidencePanel({ activeJob, session }: EvidencePanelProps) {
   }
 
   return (
-    <section className="card-flat p-4">
+    <section className="surface p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Evidencias</p>
-          <h2 className="mt-0.5 text-base font-bold text-ink">Registro privado</h2>
+          <p className="eyebrow">Evidências</p>
+          <h2 className="mt-2 text-lg font-extrabold text-ink">Registro privado</h2>
         </div>
         <button
           className="btn-icon h-9 w-9"
@@ -72,12 +72,13 @@ export function EvidencePanel({ activeJob, session }: EvidencePanelProps) {
 
       <div className="space-y-3">
         <div>
-          <label className="label mb-1.5">Nome do arquivo</label>
-          <input className="input" value={fileName} onChange={(event) => setFileName(event.target.value)} />
+          <label className="label mb-1.5" htmlFor="evidence-file">Nome do arquivo</label>
+          <input id="evidence-file" className="input" value={fileName} onChange={(event) => setFileName(event.target.value)} />
         </div>
         <div>
-          <label className="label mb-1.5">Nota privada</label>
+          <label className="label mb-1.5" htmlFor="evidence-note">Nota privada</label>
           <textarea
+            id="evidence-note"
             className="input min-h-[5rem] resize-y"
             value={body}
             onChange={(event) => setBody(event.target.value)}
@@ -95,7 +96,7 @@ export function EvidencePanel({ activeJob, session }: EvidencePanelProps) {
         {evidence.length > 0 && (
           <div className="space-y-2">
             {evidence.map((item) => (
-              <article className="rounded-xl border border-line bg-app p-3" key={item.id}>
+              <article className="rounded-lg border border-line bg-app p-3" key={item.id}>
                 <div className="flex items-start gap-3">
                   <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white shadow-sm">
                     <FileCheck2 className="h-4 w-4 text-trust" aria-hidden="true" />
@@ -111,7 +112,7 @@ export function EvidencePanel({ activeJob, session }: EvidencePanelProps) {
         )}
 
         {status ? (
-          <p className="rounded-lg bg-app px-3 py-2.5 text-xs leading-relaxed text-muted">{status}</p>
+          <p className="rounded-lg bg-app px-3 py-2.5 text-xs leading-relaxed text-muted" role="status">{status}</p>
         ) : null}
       </div>
     </section>

@@ -115,7 +115,7 @@ export async function createPreparedJob(preparedJob: PreparedJob): Promise<Hex> 
   });
 }
 
-export async function fundJob(config: EscrowConfig, jobId: number): Promise<Hex> {
+export async function fundJob(config: EscrowConfig, jobId: string): Promise<Hex> {
   const wallet = await getWallet();
   return wallet.writeContract({
     address: config.escrow_contract_address as Hex,
@@ -128,7 +128,7 @@ export async function fundJob(config: EscrowConfig, jobId: number): Promise<Hex>
 
 export async function submitMilestone(
   config: EscrowConfig,
-  milestoneId: number,
+  milestoneId: string,
   evidence: string
 ): Promise<Hex> {
   const wallet = await getWallet();
@@ -141,7 +141,7 @@ export async function submitMilestone(
   });
 }
 
-export async function approveMilestone(config: EscrowConfig, milestoneId: number): Promise<Hex> {
+export async function approveMilestone(config: EscrowConfig, milestoneId: string): Promise<Hex> {
   const wallet = await getWallet();
   return wallet.writeContract({
     address: config.escrow_contract_address as Hex,
@@ -154,7 +154,7 @@ export async function approveMilestone(config: EscrowConfig, milestoneId: number
 
 export async function requestRevision(
   config: EscrowConfig,
-  milestoneId: number,
+  milestoneId: string,
   evidence: string
 ): Promise<Hex> {
   const wallet = await getWallet();
@@ -169,7 +169,7 @@ export async function requestRevision(
 
 export async function openDispute(
   config: EscrowConfig,
-  milestoneId: number,
+  milestoneId: string,
   evidence: string
 ): Promise<Hex> {
   const wallet = await getWallet();
@@ -182,7 +182,7 @@ export async function openDispute(
   });
 }
 
-export async function releaseAfterTimeout(config: EscrowConfig, milestoneId: number): Promise<Hex> {
+export async function releaseAfterTimeout(config: EscrowConfig, milestoneId: string): Promise<Hex> {
   const wallet = await getWallet();
   return wallet.writeContract({
     address: config.escrow_contract_address as Hex,

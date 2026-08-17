@@ -1,6 +1,8 @@
-import { Bell, Wallet } from "lucide-react";
+import { Bell, Layers3, Wallet } from "lucide-react";
 
 import type { WalletSession } from "../lib/wallet";
+import { runtimeConfig } from "../lib/config";
+import { formatAddress } from "../lib/formatters";
 
 interface WalletBarProps {
   session: WalletSession | null;
@@ -9,46 +11,42 @@ interface WalletBarProps {
 }
 
 export function WalletBar({ session, onConnect, error }: WalletBarProps) {
-  const shortAddress = session
-    ? `${session.address.slice(0, 6)}...${session.address.slice(-4)}`
-    : "Conectar";
+  const shortAddress = session ? formatAddress(session.address) : "Conectar carteira";
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white/80 backdrop-blur-sm px-4 py-3 md:px-6">
-      <div className="flex items-center gap-3">
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-chain to-trust text-white shadow-sm">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
+    <header className="sticky top-0 z-20 border-b border-line bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3 lg:hidden">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-ink text-white">
+            <Layers3 className="h-[18px] w-[18px]" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-extrabold text-ink">TrustWork</p>
+            <p className="truncate text-[10px] font-semibold uppercase text-muted">{runtimeConfig.networkName}</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-base font-bold text-ink">MatchEscrow</h1>
-          <p className="text-xs text-muted">Base Sepolia · USDC · Escrow verificavel</p>
-        </div>
-      </div>
 
-      <div className="flex items-center gap-2">
-        {error ? <span className="hidden text-sm text-coral md:inline">{error}</span> : null}
-        <button
-          className="btn-icon relative"
-          type="button"
-          aria-label="Notificacoes"
-          title="Notificacoes"
-        >
-          <Bell className="h-4 w-4" aria-hidden="true" />
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-coral" />
-        </button>
-        <button
-          className="btn-primary h-10"
-          type="button"
-          onClick={onConnect}
-        >
-          <Wallet className="h-4 w-4" aria-hidden="true" />
-          <span>{shortAddress}</span>
-        </button>
+        <div className="hidden items-center gap-2 text-sm text-muted lg:flex">
+          <span className="h-2 w-2 rounded-full bg-trust" />
+          <span>{runtimeConfig.networkName}</span>
+          <span className="text-line">/</span>
+          <span>USDC</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {error ? <span className="hidden max-w-sm truncate text-xs font-semibold text-coral sm:block" role="alert">{error}</span> : null}
+          <button className="btn-icon hidden sm:grid" type="button" aria-label="Notificações" title="Notificações">
+            <Bell className="h-[18px] w-[18px]" aria-hidden="true" />
+            <span className="absolute mt-[-24px] ml-[24px] h-2 w-2 rounded-full bg-coral ring-2 ring-white" />
+          </button>
+          <button className="btn-primary whitespace-nowrap" type="button" onClick={onConnect}>
+            <Wallet className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{shortAddress}</span>
+            <span className="sm:hidden">Carteira</span>
+          </button>
+        </div>
       </div>
+      {error ? <p className="mt-2 text-xs font-semibold text-coral sm:hidden" role="alert">{error}</p> : null}
     </header>
   );
 }

@@ -5,19 +5,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#111827",
-        muted: "#667085",
-        app: "#F6F7FB",
-        line: "#D9DEE8",
-        trust: "#0F9F8F",
-        chain: "#315EFB",
-        coral: "#E24A5A",
-        gold: "#C98718"
+        ink: "#161917",
+        muted: "#68706B",
+        app: "#F4F5F2",
+        line: "#DDE0DC",
+        trust: "#28A98B",
+        "trust-deep": "#08755F",
+        "trust-soft": "#EAF8F3",
+        chain: "#2456F6",
+        "chain-deep": "#173EBD",
+        "chain-soft": "#EDF2FF",
+        coral: "#DC4B3F",
+        "coral-soft": "#FFF0ED",
+        gold: "#A46706"
       },
       boxShadow: {
         panel: "0 18px 45px rgba(17, 24, 39, 0.08)",
-        card: "0 4px 16px rgba(17, 24, 39, 0.06)",
-        elevated: "0 8px 32px rgba(17, 24, 39, 0.10)",
+        card: "0 1px 2px rgba(22, 25, 23, 0.04)",
+        elevated: "0 12px 30px rgba(22, 25, 23, 0.10)",
         glow: "0 0 0 2px rgba(49, 94, 251, 0.15)"
       },
       keyframes: {

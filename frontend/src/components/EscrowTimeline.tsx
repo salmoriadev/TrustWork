@@ -1,6 +1,7 @@
 import { CheckCircle2, Circle, Clock3, Scale, UploadCloud } from "lucide-react";
 
 import type { MarketplaceJob, MilestoneStatus } from "../lib/types";
+import { formatEscrowState, formatMilestoneState } from "../lib/formatters";
 
 const statusConfig: Record<
   MilestoneStatus,
@@ -17,13 +18,13 @@ const statusConfig: Record<
 
 export function EscrowTimeline({ job }: { job: MarketplaceJob }) {
   return (
-    <section className="border-b border-line bg-white p-5">
+    <section className="border-b border-line bg-white p-5 sm:p-6">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Escrow</p>
-          <h2 className="mt-0.5 text-lg font-bold text-ink">Milestones on-chain</h2>
+          <p className="eyebrow">Escrow</p>
+          <h2 className="mt-2 text-lg font-extrabold text-ink">Milestones on-chain</h2>
         </div>
-        <span className="tag tag-chain">{job.escrowState}</span>
+        <span className="tag tag-chain">{formatEscrowState(job.escrowState)}</span>
       </div>
 
       <div className="relative">
@@ -56,7 +57,7 @@ export function EscrowTimeline({ job }: { job: MarketplaceJob }) {
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-bold text-ink">USDC {milestone.amount}</p>
-                    <span className={`text-xs font-medium ${color}`}>{milestone.status}</span>
+                    <span className={`text-xs font-medium ${color}`}>{formatMilestoneState(milestone.status)}</span>
                   </div>
                 </div>
               </div>

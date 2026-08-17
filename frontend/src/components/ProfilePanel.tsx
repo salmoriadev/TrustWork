@@ -1,4 +1,5 @@
 import type { WalletSession } from "../lib/wallet";
+import { formatAddress } from "../lib/formatters";
 
 interface ProfilePanelProps {
   session: WalletSession | null;
@@ -20,23 +21,24 @@ export function ProfilePanel({
   onSave
 }: ProfilePanelProps) {
   return (
-    <section className="card-flat p-4">
+    <section className="surface p-5 sm:p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-chain to-trust text-sm font-bold text-white shadow-sm">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-chain-soft text-sm font-extrabold text-chain-deep">
           {session ? session.address.slice(2, 4).toUpperCase() : "?"}
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Perfil</p>
-          <h2 className="truncate text-sm font-bold text-ink">
-            {session ? shortWallet(session.address) : "Conecte uma wallet"}
+          <p className="eyebrow">Perfil</p>
+          <h2 className="mt-1 truncate text-sm font-extrabold text-ink">
+            {session ? formatAddress(session.address) : "Conecte uma wallet"}
           </h2>
         </div>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="label mb-1.5">Nome publico</label>
+          <label className="label mb-1.5" htmlFor="profile-name">Nome público</label>
           <input
+            id="profile-name"
             className="input"
             disabled={!session}
             value={profileName}
@@ -45,8 +47,9 @@ export function ProfilePanel({
           />
         </div>
         <div>
-          <label className="label mb-1.5">Papel</label>
+          <label className="label mb-1.5" htmlFor="profile-role">Atuação</label>
           <select
+            id="profile-role"
             className="input"
             disabled={!session}
             value={rolePreference}
@@ -66,13 +69,9 @@ export function ProfilePanel({
           Salvar perfil
         </button>
         {status ? (
-          <p className="rounded-lg bg-app px-3 py-2 text-xs leading-relaxed text-muted">{status}</p>
+          <p className="rounded-lg bg-app px-3 py-2.5 text-xs leading-relaxed text-muted" role="status">{status}</p>
         ) : null}
       </div>
     </section>
   );
-}
-
-function shortWallet(wallet: string): string {
-  return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
 }

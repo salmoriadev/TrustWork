@@ -1,11 +1,13 @@
+import { runtimeConfig } from "./config";
+
 export interface WalletSession {
   address: string;
   chainId: number;
 }
 
 export async function connectWalletConnect(): Promise<WalletSession> {
-  const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
-  const chainId = Number(import.meta.env.VITE_CHAIN_ID ?? 84532);
+  const projectId = runtimeConfig.walletConnectProjectId;
+  const chainId = runtimeConfig.chainId;
 
   if (!projectId || projectId === "replace-me") {
     throw new Error("WalletConnect project id not configured");

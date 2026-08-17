@@ -8,7 +8,7 @@ export type MilestoneStatus =
   | "Resolved";
 
 export interface Milestone {
-  id: number;
+  id: string;
   title: string;
   amount: string;
   status: MilestoneStatus;
@@ -25,7 +25,7 @@ export interface Reputation {
 
 export interface MarketplaceJob {
   dbId?: string;
-  id: number;
+  id: string;
   title: string;
   client: string;
   freelancerWallet?: string;

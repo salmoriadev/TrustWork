@@ -1,87 +1,32 @@
 import type { MarketplaceJob, MilestoneStatus, Reputation } from "./types";
+import type { components } from "./api.generated";
+import { runtimeConfig } from "./config";
+import { formatUsdcRaw } from "./chainValues";
+import { formatAddress, formatDateTime } from "./formatters";
 
-export interface EscrowConfig {
-  chain_id: number;
-  escrow_contract_address: string;
-  usdc_contract_address: string;
-  escrow_arbitrator: string;
-}
+type Schemas = components["schemas"];
+type GeneratedJob = Schemas["JobRead"];
+type GeneratedMilestone = Schemas["MilestoneRead"];
 
-export interface PreparedJob {
-  chain_id: number;
-  escrow_contract_address: string;
-  usdc_contract_address: string;
-  job_id: number;
-  freelancer_wallet: string;
-  milestone_amounts_raw: number[];
-  total_amount_raw: number;
-}
-
-interface ApiMilestone {
-  onchain_milestone_id: string;
-  sequence: number;
-  title: string | null;
-  amount_raw: string;
-  submitted_at: string | null;
-  review_deadline: string | null;
-  status: MilestoneStatus;
-}
-
-interface ApiJob {
-  id: string;
-  onchain_job_id: string;
-  client_wallet: string;
-  freelancer_wallet: string;
-  title: string | null;
-  public_summary: string | null;
-  total_amount_raw: string;
-  status: MarketplaceJob["escrowState"];
-  milestones: ApiMilestone[];
-}
-
-export interface UserProfile {
-  id: string;
-  wallet_address: string;
-  display_name: string | null;
+export type EscrowConfig = Schemas["EscrowConfigRead"];
+export type PreparedJob = Schemas["JobPrepareRead"];
+export type EvidenceRead = Schemas["EvidenceRead"];
+export type ReputationRead = Schemas["ReputationRead"];
+export type UserProfile = Omit<Schemas["UserRead"], "role_preference"> & {
   role_preference: "client" | "freelancer" | "both" | null;
-  profile_visibility: string;
-}
+};
 
-export interface MatchRead {
-  job: ApiJob;
-  swipe: {
-    id: string;
-    direction: "left" | "right" | "super";
-    created_at: string;
-  };
-}
-
-export interface EvidenceRead {
-  id: string;
-  job_id: string;
-  milestone_id: string | null;
-  dispute_id: string | null;
-  uploader_wallet: string;
-  storage_uri: string;
-  sha256_hash: string;
-  content_type: string | null;
-  size_bytes: number | null;
-  visibility: string;
-  created_at: string;
-}
-
-export interface ReputationRead {
-  wallet_address: string;
-  completed_jobs: number;
-  verified_volume_tier: string;
-  direct_approval_rate_bps: number;
-  dispute_rate_bps: number;
-  repeat_client_count: number;
-  updated_at: string | null;
-}
+type ApiMilestone = Omit<GeneratedMilestone, "status"> & {
+  status: MilestoneStatus;
+};
+type ApiJob = Omit<GeneratedJob, "milestones" | "status"> & {
+  milestones: ApiMilestone[];
+  status: MarketplaceJob["escrowState"];
+};
+type MatchRead = Omit<Schemas["MatchRead"], "job"> & { job: ApiJob };
 
 export async function fetchMarketplaceJobs(): Promise<MarketplaceJob[]> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+  const baseUrl = runtimeConfig.apiBaseUrl;
   const response = await fetch(`${baseUrl}/jobs`);
   if (!response.ok) {
     throw new Error(`API returned ${response.status}`);
@@ -102,8 +47,8 @@ export async function fetchEscrowConfig(): Promise<EscrowConfig> {
 
 export async function prepareJob(params: {
   freelancerWallet: string;
-  milestoneAmountsRaw: number[];
-  jobId?: number;
+  milestoneAmountsRaw: string[];
+  jobId?: string;
 }): Promise<PreparedJob> {
   const baseUrl = apiBaseUrl();
   const response = await fetch(`${baseUrl}/jobs/prepare`, {
@@ -139,7 +84,7 @@ export async function upsertUserProfile(params: {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      display_name: params.displayName ?? `User ${shortWallet(params.walletAddress)}`,
+      display_name: params.displayName ?? `User ${formatAddress(params.walletAddress)}`,
       role_preference: params.rolePreference ?? "both",
       profile_visibility: "public"
     })
@@ -242,18 +187,18 @@ export async function refreshReputation(walletAddress: string): Promise<Reputati
 }
 
 function apiBaseUrl(): string {
-  return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+  return runtimeConfig.apiBaseUrl;
 }
 
 function toMarketplaceJob(job: ApiJob): MarketplaceJob {
-  const id = Number(job.onchain_job_id);
+  const id = job.onchain_job_id;
   return {
     dbId: job.id,
     id,
     title: job.title ?? `Contrato on-chain #${id}`,
-    client: shortWallet(job.client_wallet),
+    client: formatAddress(job.client_wallet),
     freelancerWallet: job.freelancer_wallet,
-    budget: `USDC ${formatUsdc(job.total_amount_raw)}`,
+    budget: `USDC ${formatUsdcRaw(job.total_amount_raw)}`,
     duration: `${job.milestones.length} milestones`,
     skills: ["Base", "USDC", "Escrow", "Indexed"],
     summary:
@@ -264,11 +209,13 @@ function toMarketplaceJob(job: ApiJob): MarketplaceJob {
     milestones: job.milestones
       .sort((left, right) => left.sequence - right.sequence)
       .map((milestone) => ({
-        id: Number(milestone.onchain_milestone_id),
+        id: milestone.onchain_milestone_id,
         title: milestone.title ?? `Milestone ${milestone.sequence + 1}`,
-        amount: formatUsdc(milestone.amount_raw),
+        amount: formatUsdcRaw(milestone.amount_raw),
         status: milestone.status,
-        due: milestone.review_deadline ? "em revisao" : "aguardando entrega"
+        due: milestone.review_deadline
+          ? formatDateTime(milestone.review_deadline)
+          : "aguardando entrega"
       })),
     reputation: {
       completedJobs: 0,
@@ -278,18 +225,6 @@ function toMarketplaceJob(job: ApiJob): MarketplaceJob {
       repeatClients: 0
     }
   };
-}
-
-function formatUsdc(raw: string): string {
-  const value = Number(raw) / 1_000_000;
-  return new Intl.NumberFormat("pt-BR", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0
-  }).format(value);
-}
-
-function shortWallet(wallet: string): string {
-  return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
 }
 
 function toReputation(reputation: ReputationRead): Reputation {
