@@ -8,6 +8,8 @@ export default {
         ink: "#161917",
         muted: "#68706B",
         app: "#F4F5F2",
+        landing: "#F7F4EC",
+        "landing-muted": "#5E655F",
         line: "#DDE0DC",
         trust: "#28A98B",
         "trust-deep": "#08755F",
