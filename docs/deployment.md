@@ -4,13 +4,13 @@ This runbook creates the fixed free-tier architecture: Vercel Hobby, Render free
 
 ## 1. Provider checkpoint
 
-Create provider accounts and store secrets only in provider or GitHub secret stores. Required secrets are: dedicated deployer private key, scoped Base Sepolia RPC URL, Neon `DATABASE_URL`, `JWT_SECRET`, independent `INDEXER_TOKEN`, WalletConnect project ID, and GitHub deployment credentials. Never paste these values into issues, logs, screenshots, or repository files.
+Create provider accounts and store secrets only in encrypted keystores, provider stores, or GitHub secret stores. Required secrets are: dedicated deployer keystore password, scoped Base Sepolia RPC URL, Neon `DATABASE_URL`, `JWT_SECRET`, independent `INDEXER_TOKEN`, WalletConnect project ID, and GitHub deployment credentials. Never paste these values into issues, logs, screenshots, shell variables, or repository files.
 
 ## 2. Deploy and verify the escrow
 
-1. Create a dedicated Base Sepolia-only deployer wallet and fund it with faucet ETH.
-2. Set `ESCROW_ADMIN`, `ESCROW_ARBITRATOR`, `FEE_RECIPIENT`, fee, cap, RPC URL, and private key in the shell or secret runner.
-3. From `contracts/`, run the `DeploySepolia.s.sol` script with `--broadcast --verify` against Base Sepolia.
+1. Create a dedicated Base Sepolia-only deployer in an encrypted Foundry keystore and fund its public address with faucet ETH.
+2. Set the public `DEPLOYER_ADDRESS`, optional role addresses, fee, cap, and RPC URL. Keep the keystore password out of shell variables.
+3. From `contracts/`, run `DeploySepolia.s.sol` with `--account <keystore-name> --sender "$DEPLOYER_ADDRESS" --broadcast --verify` against Base Sepolia. Foundry prompts for the keystore password without exposing the private key.
 4. Confirm the immutable accepted token is official Base Sepolia USDC: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
 5. Record the escrow address, deployment block, transaction hash, verification URL, admin, arbitrator, fee recipient, fee, and cap in the release notes. Do not commit the key or RPC credential.
 

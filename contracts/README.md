@@ -30,13 +30,23 @@ Never reuse a local development key on a public network.
 
 ## Base Sepolia deployment
 
-Use a dedicated, minimally funded deployer and the official Base Sepolia USDC address recorded in the root environment template:
+Use a dedicated, minimally funded deployer stored in an encrypted Foundry keystore. Never decrypt
+the key into a shell variable. The script enforces Base Sepolia and the official test USDC address:
 
 ```bash
-forge script script/DeployFreelanceEscrow.s.sol:DeployFreelanceEscrow \
+cast wallet new ~/.foundry/keystores trustwork-deployer
+export DEPLOYER_ADDRESS="$(cast wallet address --account trustwork-deployer)"
+export RPC_URL="https://sepolia.base.org"
+
+forge script script/DeploySepolia.s.sol:DeploySepolia \
+  --account trustwork-deployer \
+  --sender "$DEPLOYER_ADDRESS" \
   --rpc-url "$RPC_URL" \
   --broadcast \
   --verify
 ```
 
-The private key belongs only in the operator's secret store. Record the escrow address, deployment block, transaction hash, verified source URL, token address, and exact commit before configuring the API. Follow the [deployment runbook](../docs/deployment.md); mainnet deployment is outside this release.
+The keystore password is entered only at Foundry's hidden prompt. Record the escrow address,
+deployment block, transaction hash, verified source URL, token address, and exact commit before
+configuring the API. Follow the [deployment runbook](../docs/deployment.md); mainnet deployment is
+outside this release.
