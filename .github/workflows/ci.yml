@@ -14,7 +14,7 @@ jobs:
       postgres:
         image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
         env:
-          POSTGRES_DB: freelance_escrow
+          POSTGRES_DB: trustwork
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
         ports:
@@ -26,7 +26,7 @@ jobs:
           --health-retries 5
     env:
       APP_ENVIRONMENT: test
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/freelance_escrow
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trustwork
     defaults:
       run:
         working-directory: backend
@@ -39,6 +39,7 @@ jobs:
           version: "0.11.26"
           enable-cache: true
       - run: uv sync --extra dev --locked
+      - run: uv run alembic upgrade head
       - run: uv run ruff check app tests
       - run: uv run pytest
       - run: uv run pip-audit
@@ -61,17 +62,21 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run lighthouse
       - name: Validate production bundle without demo fixtures
         env:
           VITE_API_BASE_URL: https://api.trustwork.example
-          VITE_CHAIN_ID: "8453"
+          VITE_RPC_URL: https://sepolia.base.org
+          VITE_CHAIN_ID: "84532"
           VITE_ESCROW_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000001"
-          VITE_USDC_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000002"
+          VITE_USDC_CONTRACT_ADDRESS: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
           VITE_WALLETCONNECT_PROJECT_ID: ci-production-check
           VITE_ENABLE_DEMO_DATA: "false"
         run: |
           npm run build:production
-          ! grep -R -E "Northstar Labs|Checkout USDC para SaaS" dist
+          ! grep -R -E "Northstar Labs|Checkout USDC para SaaS|matchescrow-demo|Anvil local|Base Mainnet" dist
 
   contracts:
     name: Contracts
@@ -175,17 +180,6 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
-          scanners: vuln
-          vuln-type: os
-          format: table
-          exit-code: "1"
-          ignore-unfixed: false
-          severity: CRITICAL,HIGH
-          version: v0.70.0
-      - name: Scan Redis image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
           scanners: vuln
           vuln-type: os
           format: table

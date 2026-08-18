@@ -8,6 +8,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!.env.*.example
 *.local
 
 # Secrets / keys
@@ -40,6 +41,9 @@ npm-debug.log*
 dist/
 .vite/
 frontend/screenshots/
+frontend/test-results/
+frontend/playwright-report/
+frontend/.lighthouseci/
 
 # Foundry
 contracts/cache/

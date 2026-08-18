@@ -1,51 +1,28 @@
-# Modelo PostgreSQL
+# Database model
 
-O banco de dados espelha o estado on-chain e armazena metadados off-chain que nao devem ir para a blockchain.
+Alembic migrations in `backend/migrations/versions/` are the authoritative PostgreSQL schema. Apply them with `uv run alembic upgrade head`; do not initialize a deployment from a handwritten SQL dump.
 
-## Principios
+## Core records
 
-- Eventos on-chain sao gravados de forma idempotente.
-- Tabelas de estado podem ser reconstruidas a partir de `indexed_events`.
-- PII, chat, arquivos e criterios privados ficam off-chain.
-- Valores financeiros sao armazenados como inteiros na menor unidade do token.
+| Table | Purpose | Important guarantees |
+| --- | --- | --- |
+| `users` | Public wallet profiles | Wallet address is unique and normalized. |
+| `jobs` | Indexed escrow jobs plus public portfolio metadata | Chain, contract, and positive on-chain job ID are unique together. |
+| `milestones` | Indexed milestone state and amounts | Belongs to one job and one on-chain index. |
+| `disputes` | Indexed dispute state | References the projected job and milestone. |
+| `evidence` | Integrity-proof metadata | Stores digest, filename, media type, size, job reference, and verified uploader—never the original body. |
+| `swipes` / `matches` | Authenticated opportunity interests | Actor wallet is derived from the bearer token. |
+| `reputation_snapshots` | Derived public execution signals | Rebuilt from indexed chain state. |
+| `indexed_events` | Idempotent raw event ledger | Log identity is unique; block hash supports replay handling. |
+| `indexer_cursors` | Persistent indexing progress | One cursor per chain and escrow contract. |
+| `auth_challenges` | Single-use wallet login challenges | Stores hashed nonce/message with expiry and consumption time. |
 
-## Entidades principais
+## Privacy and security boundaries
 
-| Tabela | Funcao |
-| --- | --- |
-| `users` | Identidade off-chain vinculada a wallet. |
-| `jobs` | Estado agregado do job e metadados privados/publicos. |
-| `milestones` | Projecao dos marcos on-chain e dados de produto. |
-| `disputes` | Disputas e resultado arbitral. |
-| `evidence_files` | Arquivos privados, hashes e URIs de storage. |
-| `chat_messages` | Mensagens off-chain relacionadas ao job. |
-| `swipe_actions` | Sinais de descoberta e matching. |
-| `indexed_events` | Log canonico para replay. |
-| `user_reputation_snapshots` | Metricas agregadas verificaveis. |
-| `reputation_access_grants` | Permissoes para dados privados de reputacao. |
-| `sybil_signals` | Sinais de risco para inflacao artificial de reputacao. |
+- Authentication challenges expire and cannot be replayed.
+- Access tokens are not persisted in PostgreSQL or browser storage.
+- Evidence content and encryption keys are outside the database contract.
+- The indexer replays a configurable window and upserts projections idempotently.
+- Production database credentials exist only in Neon and Render secret stores.
 
-## Replay de eventos
-
-O indexer processa eventos em ordem crescente de bloco/log:
-
-```text
-JobCreated -> upsert jobs + milestones
-JobFunded -> jobs.status = Funded
-MilestoneSubmitted -> milestones.status = Submitted
-MilestoneApproved -> milestones.status = Released
-RevisionRequested -> milestones.status = RevisionRequested
-DisputeOpened -> jobs.status = Disputed, milestones.status = Disputed
-DisputeResolved -> disputes.status = Resolved, milestone.status = Resolved
-PaymentReleased -> incrementa saldos projetados e metricas
-JobCancelled -> jobs.status = Cancelled
-PlatformFeeCollected -> registra fee operacional
-```
-
-## Arquivo SQL
-
-O DDL executavel esta em:
-
-```text
-backend/sql/schema.sql
-```
+See the generated `backend/openapi.json` for request/response shapes and [deployment.md](deployment.md) for migration and rollback operations.

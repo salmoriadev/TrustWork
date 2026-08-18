@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: trustwork-api
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health/ready
+    autoDeploy: true
+    envVars:
+      - key: APP_ENVIRONMENT
+        value: production
+      - key: PORT
+        value: "8000"
+      - key: CHAIN_ID
+        value: "84532"
+      - key: USDC_CONTRACT_ADDRESS
+        value: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+      - key: RPC_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ESCROW_CONTRACT_ADDRESS
+        sync: false
+      - key: ESCROW_ARBITRATOR
+        sync: false
+      - key: INDEXER_START_BLOCK
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INDEXER_TOKEN
+        generateValue: true
+      - key: API_CORS_ORIGINS
+        sync: false
+      - key: SIWE_DOMAIN
+        sync: false
+      - key: SIWE_ORIGIN
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false

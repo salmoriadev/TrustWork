@@ -1,0 +1,26 @@
+name: Reconcile Base Sepolia events
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reconcile confirmed escrow events
+        env:
+          TRUSTWORK_API_URL: ${{ secrets.TRUSTWORK_API_URL }}
+          INDEXER_TOKEN: ${{ secrets.INDEXER_TOKEN }}
+        run: |
+          test -n "$TRUSTWORK_API_URL"
+          test -n "$INDEXER_TOKEN"
+          curl --fail-with-body --retry 4 --retry-all-errors \
+            --max-time 45 \
+            --request POST \
+            --header "X-Indexer-Token: $INDEXER_TOKEN" \
+            "$TRUSTWORK_API_URL/indexer/reconcile"

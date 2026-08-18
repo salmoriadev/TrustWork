@@ -1,137 +1,134 @@
-# Swipe-Based Freelance Marketplace com Blockchain Escrow
+# TrustWork
 
-MVP Web2/Web3 para marketplace freelance internacional com descoberta por swipe, pagamentos em USDC e escrow multifasico em smart contract.
+> Verifiable milestone escrow for project work — running on Base Sepolia with test USDC.
 
-O principio central do projeto e manter aplicacao, recomendacao, chat, arquivos e privacidade off-chain, usando a blockchain somente para liquidacao financeira, maquina de estados de escrow e integridade das evidencias.
+[![CI](https://github.com/salmoriadev/TrustWork/actions/workflows/ci.yml/badge.svg)](https://github.com/salmoriadev/TrustWork/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/salmoriadev/TrustWork/actions/workflows/codeql.yml/badge.svg)](https://github.com/salmoriadev/TrustWork/actions/workflows/codeql.yml)
+![Base Sepolia](https://img.shields.io/badge/network-Base%20Sepolia-0052FF)
+![MIT](https://img.shields.io/badge/license-MIT-111827)
 
-## Estrutura do repositorio
+TrustWork is an early-access engineering portfolio project that combines a public read-only marketplace, wallet authentication, test USDC milestone escrow, evidence-integrity proofs, and event-derived reputation. Anonymous visitors can inspect indexed contracts; connecting a wallet is optional.
 
-```text
-.
-|-- contracts/              # Foundry + Solidity escrow
-|-- backend/                # FastAPI, PostgreSQL, Redis e indexer de eventos
-|-- frontend/               # React, TypeScript e Tailwind CSS
-|-- docs/                   # Documentacao de arquitetura e modelo de dados
-|-- docker-compose.yml      # Infra local para Postgres e Redis
-`-- .env.example            # Variaveis base do projeto
+**Deployment status:** provider setup and the dedicated Base Sepolia deployment are pending. No live URL or contract address is published yet. See the [deployment runbook](docs/deployment.md) for the exact release checkpoint.
+
+![TrustWork social preview](portfolio/social-preview.png)
+
+## Why this exists
+
+Freelance agreements often blur scope, proof of delivery, and payment approval. TrustWork turns those boundaries into explicit milestones. A Solidity escrow preserves the financial state machine; a FastAPI indexer projects public chain state into a browsable product; original evidence content stays with the user while a digest proves integrity.
+
+## Core flow
+
+1. Browse already-indexed Base Sepolia contracts without a wallet.
+2. Optionally connect an injected wallet or WalletConnect and sign an EIP-4361 message.
+3. Create and fund milestones with official Base Sepolia test USDC.
+4. Hash a file or note in the browser and submit the same `bytes32` digest to the API and escrow.
+5. Follow the transaction through signature, submission, confirmation, BaseScan proof, and indexing.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    visitor[Visitor / wallet] -->|static landing + SPA| vercel[Vercel · React]
+    vercel -->|anonymous reads + bearer mutations| render[Render · FastAPI]
+    render -->|SQL + cursor + SIWE nonces| neon[(Neon PostgreSQL)]
+    visitor -->|optional contract writes| base[Base Sepolia]
+    base --> escrow[TrustWork escrow]
+    escrow -->|confirmed logs| indexer[Idempotent indexer]
+    indexer --> neon
+    actions[Scheduled GitHub Action] -->|INDEXER_TOKEN| render
+    vercel -->|RPC reads / receipts| base
 ```
 
-## Comeco rapido
+## Feature status
 
-### 1. Preparar o checkout
+| Capability | Status |
+| --- | --- |
+| Static, API-free landing at `/` | Implemented |
+| Anonymous indexed marketplace at `/app` | Implemented; needs deployed seed contracts |
+| Injected wallet + WalletConnect session | Implemented |
+| Base Sepolia enforcement and add/switch flow | Implemented |
+| EIP-4361 challenge, replay protection, in-memory bearer token | Implemented |
+| Receipt, replacement, revert, BaseScan, and indexing states | Implemented |
+| Browser-side SHA-256 evidence integrity proofs | Implemented |
+| Persistent confirmed-block cursor and scheduled reconciliation | Implemented |
+| Encrypted private file hosting | Roadmap — not represented as live |
+| Mainnet / real-money usage | Out of scope |
+| External smart-contract audit | Not completed |
 
-Requisitos: Git, Node.js 20+, npm, Python 3.11+, [uv](https://docs.astral.sh/uv/) e Foundry 1.7.1.
+## Quick preview
 
 ```bash
-./scripts/bootstrap.sh
+cd frontend && npm ci
+npm run dev
 ```
 
-O comando inicializa os submodulos nas revisoes de `contracts/foundry.lock`, sincroniza o backend
-por `backend/uv.lock`, instala o frontend com `npm ci` e compila os contratos.
+Open `http://localhost:5173`. The landing page performs no API or wallet initialization. `/app` expects a configured API; local fixtures are available only in Vite development mode when `VITE_ENABLE_DEMO_DATA=true`.
 
-### 2. Validar tudo
+## Reproducible local stack
 
-Com PostgreSQL disponivel conforme `DATABASE_URL`:
+Prerequisites: Node 20, Python 3.12, [uv](https://docs.astral.sh/uv/), Docker, and Foundry 1.7.1.
+
+```bash
+cp .env.example .env
+docker compose up -d postgres
+cd backend && uv sync --extra dev --locked && uv run alembic upgrade head
+uv run uvicorn app.main:app --reload
+```
+
+In another terminal:
+
+```bash
+cd frontend && npm ci && npm run dev
+```
+
+For the complete local contract flow, run `./demo.sh` after configuring the local deployment values documented in [contracts/README.md](contracts/README.md).
+
+## Technical highlights
+
+- Solidity state machine with milestone funding, approval, revision, disputes, timeouts, mutual cancellation, caps, roles, pausing, and reentrancy protection.
+- SIWE-compatible authentication with hashed single-use nonces, strict domain/URI/chain checks, short-lived HS256 access tokens, and server-derived actors.
+- PostgreSQL event projection with idempotent log identity, a persistent confirmed cursor, and a replay window.
+- Evidence privacy boundary: no evidence body crosses the API; only digest, filename, media type, size, job reference, and verified uploader are stored.
+- A single EIP-1193 wallet session powers signing and every contract write.
+- Production security headers, strict CORS, trusted hosts, provider-only secrets, CodeQL, Trivy, npm audit, pip-audit, Slither, Foundry, SBOM, and schema gates.
+
+## Testing
 
 ```bash
 ./scripts/check.sh
 ```
 
-Para validar tambem RPC, chain ID e bytecode dos contratos configurados, use
-`VALIDATE_CHAIN=1 ./scripts/check.sh` em staging ou producao.
+The CI matrix runs backend unit/integration tests, Alembic migrations, frontend tests and production builds, Foundry unit/fuzz/invariant suites, Slither, dependency audits, secret/IaC/image scanning, generated API contract checks, and SBOM generation.
 
-### 3. Executar a stack local
+## Smart contract
 
-```bash
-./demo.sh
-```
+- Network: Base Sepolia (`84532`)
+- Token: official Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`)
+- Escrow address: **pending dedicated deployment**
+- Deployment transaction: **pending**
+- Verification URL: **pending**
 
-O script sobe Postgres, Redis, Anvil, contratos, API e frontend. Ele encerra somente os processos
-que iniciou e falha caso uma porta necessaria ja esteja ocupada.
+No local Anvil address or fabricated transaction is presented as a public deployment.
 
-### Execucao manual dos contratos
+## Security and limitations
 
-```bash
-git submodule update --init --recursive
-forge test --root contracts
-```
+- Testnet only; test ETH and test USDC have no monetary value.
+- Not commercially available and not suitable for real funds.
+- The escrow has not received an external security audit.
+- TrustWork does not host private files; encrypted storage is a roadmap item.
+- Free hosting can sleep or enforce quotas; the UI uses bounded wake-up retries and a clear failure state.
+- Review [SECURITY.md](SECURITY.md) before reporting a vulnerability.
 
-Para rodar localmente como se fosse Ganache, use o Anvil:
+## Documentation
 
-```bash
-anvil
-```
+Start with the [documentation index](docs/README.md), then use the [deployment runbook](docs/deployment.md) for Neon, Base Sepolia, Render, Vercel, rollback, and smoke tests.
 
-Em outro terminal:
+## Roadmap
 
-```bash
-cd contracts
-forge script script/DeployLocal.s.sol:DeployLocal --rpc-url http://127.0.0.1:8545 --broadcast
-```
+- Complete the dedicated, verified Base Sepolia deployment and public seed jobs.
+- Publish the Vercel and Render URLs after live smoke tests.
+- Add encrypted user-controlled evidence storage as a separately threat-modeled capability.
+- Commission an independent smart-contract audit before considering any mainnet path.
 
-O script local deploya um `MockUSDC` e o contrato `FreelanceEscrow`. Depois do deploy, copie os enderecos impressos para `.env`.
-
-### Execucao manual do backend
-
-```bash
-cd backend
-uv sync --extra dev --locked
-uv run uvicorn app.main:app --reload
-```
-
-### Execucao manual do frontend
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-## Documentos principais
-
-- [Arquitetura do MVP](docs/ARQUITETURA_MVP.md)
-- [Schema PostgreSQL](docs/DATABASE_SCHEMA.md)
-- [Status e pendencias do MVP](docs/MVP_STATUS.md)
-- [Trilha de producao e comercializacao](docs/producao/README.md)
-- [Roadmap de producao - fases 10 a 18](docs/producao/ROADMAP-PRODUCAO.md)
-- [Release gates](docs/producao/RELEASE-GATES.md)
-- [Contrato Escrow](contracts/src/FreelanceEscrow.sol)
-- [Backend README](backend/README.md)
-- [Frontend README](frontend/README.md)
-
-## O que ja temos
-
-Este repositorio ja contem uma base inicial funcional para evoluir o MVP:
-
-- Contrato Solidity com estados de job, milestones, disputas, timeout, cancelamento mutuo, fee e cap de valor.
-- `MockUSDC` para testes locais e script de deploy em rede local Anvil.
-- Testes Foundry cobrindo fluxos centrais do escrow.
-- Schema PostgreSQL reconstruivel a partir de eventos on-chain.
-- Backend FastAPI com modelos, endpoints iniciais, indexer idempotente e projector de eventos.
-- Frontend React com experiencia inicial de swipe, wallet, timeline de escrow e reputacao verificavel.
-- Docker Compose para Postgres e Redis.
-- `.env.example` com variaveis necessarias sem expor segredos.
-
-## Proximo ciclo
-
-As fases 00-09 registram a construcao historica do MVP. O trabalho necessario para completar
-identidade, wallet, evidencias, contrato, operacao e compliance esta detalhado na
-[trilha de producao](docs/producao/README.md). Esse documento e a fonte vigente para planejar um
-deploy comercial.
-
-## O que ainda falta para fechar o MVP
-
-- Integrar WalletConnect ao mesmo provider usado pelas escritas e acompanhar receipts/reverts.
-- Tornar o indexador continuo, autenticado, resiliente a reorg e operavel em staging.
-- Completar a jornada de criacao, funding, submit, approve, dispute e timeout com estados reais.
-- Implementar storage privado para entregas/evidencias.
-- Criar autenticacao por wallet de ponta a ponta.
-- Adicionar migracoes de banco e scripts de seed para demo.
-- Fazer deploy em Base Sepolia depois que o fluxo local estiver estavel.
-
-## Observacoes de seguranca
-
-- Nunca commitar `.env`, private keys, mnemonic phrases, keystores ou dumps de banco.
-- O contrato nao possui funcao administrativa para sacar fundos de usuarios.
-- Em producao, `ESCROW_ADMIN` deve ser multisig.
-- Para Base Mainnet, usar apenas o endereco oficial do USDC da rede Base.
+Built by [Arthur Salmoria](https://github.com/salmoriadev). Released under the [MIT License](LICENSE).
