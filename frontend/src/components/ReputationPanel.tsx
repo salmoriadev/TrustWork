@@ -16,12 +16,12 @@ export function ReputationPanel({
     <section className={`${compact ? "" : "border-b border-line"} bg-white p-5 sm:p-6`}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="eyebrow">Reputação</p>
-          <h2 className="mt-2 text-lg font-extrabold text-ink">Sinais verificáveis</h2>
+          <p className="eyebrow">Reputation</p>
+          <h2 className="mt-2 text-lg font-extrabold text-ink">Verifiable signals</h2>
         </div>
         {onRefresh ? (
           <button className="btn-ghost !min-h-9 !px-3 !py-1.5 text-xs" type="button" onClick={onRefresh}>
-            Atualizar
+            Refresh
           </button>
         ) : null}
       </div>
@@ -29,20 +29,20 @@ export function ReputationPanel({
       <div className={`grid gap-px overflow-hidden rounded-lg border border-line bg-line ${compact ? "grid-cols-2" : "sm:grid-cols-2"}`}>
         <Signal
           icon={BadgeCheck}
-          label="jobs concluidos"
+          label="completed jobs"
           value={String(reputation.completedJobs)}
           tone="trust"
         />
-        <Signal icon={TrendingUp} label="volume" value={reputation.volumeTier} tone="chain" />
+        <Signal icon={TrendingUp} label="volume tier" value={reputation.volumeTier} tone="chain" />
         <Signal
           icon={Repeat2}
-          label="clientes recorrentes"
+          label="repeat clients"
           value={String(reputation.repeatClients)}
           tone="gold"
         />
         <Signal
           icon={ShieldAlert}
-          label="disputas"
+          label="disputes"
           value={formatBps(reputation.disputeRate)}
           tone="coral"
         />
@@ -50,7 +50,7 @@ export function ReputationPanel({
 
       <div className="mt-6">
         <div className="mb-2 flex items-center justify-between text-sm">
-          <span className="font-medium text-muted">Aprovacao direta</span>
+          <span className="font-medium text-muted">Direct approval</span>
           <span className="font-bold text-ink">
             {formatBps(reputation.directApprovalRate)}
           </span>

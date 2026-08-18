@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -16,6 +17,7 @@ from tests.conftest import (
 def test_reputation_refresh_calculates_public_snapshot(
     client: TestClient,
     db_session: Session,
+    auth_headers: Callable[..., dict[str, str]],
 ) -> None:
     direct_job = _create_job(db_session, 920001, CLIENT_WALLET, JobStatus.completed, 1_000_000_000)
     disputed_job = _create_job(db_session, 920002, CLIENT_WALLET, JobStatus.resolved, 500_000_000)
@@ -40,7 +42,10 @@ def test_reputation_refresh_calculates_public_snapshot(
     )
     db_session.flush()
 
-    response = client.post(f"/reputation/{FREELANCER_WALLET}/refresh")
+    response = client.post(
+        f"/reputation/{FREELANCER_WALLET}/refresh",
+        headers=auth_headers(FREELANCER_WALLET),
+    )
     assert response.status_code == 200
     payload = response.json()
     assert "verified_volume_raw" not in payload
@@ -55,9 +60,13 @@ def test_reputation_refresh_calculates_public_snapshot(
     assert get_response.json() == payload
 
 
-def test_reputation_rejects_invalid_wallet(client: TestClient) -> None:
+def test_reputation_rejects_invalid_wallet(
+    client: TestClient, auth_headers: Callable[..., dict[str, str]]
+) -> None:
     assert client.get("/reputation/not-a-wallet").status_code == 422
-    assert client.post("/reputation/not-a-wallet/refresh").status_code == 422
+    assert (
+        client.post("/reputation/not-a-wallet/refresh", headers=auth_headers()).status_code == 422
+    )
 
 
 def _create_job(

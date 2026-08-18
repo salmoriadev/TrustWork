@@ -7,12 +7,12 @@ const ProductApp = lazy(() => import("./ProductApp"));
 
 const routeMetadata: Record<AppRoute, { title: string; description: string }> = {
   landing: {
-    title: "TrustWork · Trabalho aprovado, pagamento liberado",
-    description: "Contrate talentos com marcos claros, escrow em USDC e evidências verificáveis. Conheça o TrustWork em early access."
+    title: "TrustWork · Verifiable milestone escrow",
+    description: "A Base Sepolia engineering demo with test USDC escrow and browser-hashed evidence integrity."
   },
   product: {
     title: "Marketplace · TrustWork",
-    description: "Marketplace TrustWork com escrow em USDC, entregas protegidas e reputação verificável."
+    description: "Explore indexed Base Sepolia escrows anonymously, or connect a wallet for optional testnet interactions."
   }
 };
 
@@ -39,7 +39,7 @@ function ProductLoading() {
     <main className="grid min-h-screen place-items-center bg-app px-5 text-ink" aria-busy="true">
       <div className="text-center">
         <span className="mx-auto block h-8 w-8 animate-spin rounded-full border-2 border-line border-t-chain" aria-hidden="true" />
-        <p className="mt-4 text-sm font-bold">Carregando marketplace…</p>
+        <p className="mt-4 text-sm font-bold">Loading marketplace…</p>
       </div>
     </main>
   );

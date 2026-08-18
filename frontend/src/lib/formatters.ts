@@ -3,23 +3,23 @@ import { isAddress } from "viem";
 import type { MarketplaceJob, MilestoneStatus } from "./types";
 
 const escrowStateLabels: Record<MarketplaceJob["escrowState"], string> = {
-  Created: "Criado",
-  Funded: "Financiado",
-  InProgress: "Em andamento",
-  Completed: "Concluido",
-  Cancelled: "Cancelado",
-  Disputed: "Em disputa",
-  Resolved: "Resolvido"
+  Created: "Created",
+  Funded: "Funded",
+  InProgress: "In progress",
+  Completed: "Completed",
+  Cancelled: "Cancelled",
+  Disputed: "Disputed",
+  Resolved: "Resolved"
 };
 
 const milestoneStateLabels: Record<MilestoneStatus, string> = {
-  Pending: "Pendente",
-  Submitted: "Enviado",
-  Approved: "Aprovado",
-  Released: "Liberado",
-  RevisionRequested: "Revisao solicitada",
-  Disputed: "Em disputa",
-  Resolved: "Resolvido"
+  Pending: "Pending",
+  Submitted: "Submitted",
+  Approved: "Approved",
+  Released: "Released",
+  RevisionRequested: "Revision requested",
+  Disputed: "Disputed",
+  Resolved: "Resolved"
 };
 
 export function formatAddress(address: string, leading = 6, trailing = 4): string {
@@ -27,9 +27,9 @@ export function formatAddress(address: string, leading = 6, trailing = 4): strin
   return `${address.slice(0, leading)}...${address.slice(-trailing)}`;
 }
 
-export function formatBps(bps: number, locale = "pt-BR"): string {
+export function formatBps(bps: number, locale = "en-US"): string {
   if (!Number.isInteger(bps) || bps < 0 || bps > 10_000) {
-    throw new Error("BPS deve ser um inteiro entre 0 e 10000.");
+    throw new Error("BPS must be an integer between 0 and 10000.");
   }
   return new Intl.NumberFormat(locale, {
     style: "percent",
@@ -42,9 +42,9 @@ export function bpsToPercent(bps: number): number {
   return Math.min(Math.max(bps / 100, 0), 100);
 }
 
-export function formatDateTime(value: string, locale = "pt-BR"): string {
+export function formatDateTime(value: string, locale = "en-US"): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Data indisponivel";
+  if (Number.isNaN(date.getTime())) return "Date unavailable";
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short"

@@ -23,10 +23,10 @@ const primaryCta = "/app";
 export function LandingPage() {
   return (
     <div className="landing-page min-h-screen overflow-hidden bg-landing text-ink">
-      <a className="skip-link" href="#conteudo">Pular para o conteúdo</a>
+      <a className="skip-link" href="#content">Skip to content</a>
       <LandingHeader />
 
-      <main id="conteudo">
+      <main id="content">
         <Hero />
         <Benefits />
         <Workflow />
@@ -45,23 +45,23 @@ function LandingHeader() {
   return (
     <header className="landing-header">
       <div className="landing-container flex min-h-[72px] items-center justify-between gap-4">
-        <a className="landing-brand" href="/" aria-label="TrustWork — início">
+        <a className="landing-brand" href="/" aria-label="TrustWork home">
           <span className="landing-brand-mark"><Layers3 aria-hidden="true" /></span>
           <span>TrustWork</span>
         </a>
 
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="Navegação da landing page">
-          <a className="landing-nav-link" href="#beneficios">Benefícios</a>
-          <a className="landing-nav-link" href="#como-funciona">Como funciona</a>
+        <nav className="hidden items-center gap-7 lg:flex" aria-label="Landing page navigation">
+          <a className="landing-nav-link" href="#benefits">Benefits</a>
+          <a className="landing-nav-link" href="#how-it-works">How it works</a>
           <a className="landing-nav-link" href="#marketplace">Marketplace</a>
-          <a className="landing-nav-link" href="#confianca">Confiança</a>
+          <a className="landing-nav-link" href="#trust">Trust model</a>
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
           <span className="early-badge"><span aria-hidden="true" />Early access</span>
           <a className="landing-button landing-button-dark landing-header-cta" href={primaryCta}>
-            <span className="hidden sm:inline">Explorar marketplace</span>
-            <span className="sm:hidden">Explorar</span>
+            <span className="hidden sm:inline">Explore marketplace</span>
+            <span className="sm:hidden">Explore</span>
             <ArrowUpRight aria-hidden="true" />
           </a>
         </div>
@@ -77,25 +77,25 @@ function Hero() {
       <div className="hero-orb hero-orb-coral" aria-hidden="true" />
       <div className="landing-container relative grid gap-14 pb-20 pt-16 sm:pb-24 sm:pt-24 lg:grid-cols-[minmax(0,1.02fr)_minmax(480px,.98fr)] lg:items-center lg:gap-16 lg:pb-28 lg:pt-28">
         <div className="relative z-10">
-          <p className="landing-kicker"><Sparkles aria-hidden="true" /> Contratação com confiança programável</p>
+          <p className="landing-kicker"><Sparkles aria-hidden="true" /> Programmable trust for project work</p>
           <h1 className="landing-display mt-7 max-w-[760px]">
-            Contrate talento. <span>Libere o pagamento</span> quando o trabalho estiver comprovado.
+            Hire talent. <span>Release payment</span> when the milestone is proven.
           </h1>
           <p className="mt-7 max-w-[620px] text-lg leading-8 text-landing-muted sm:text-xl sm:leading-9">
-            Defina entregas, proteja o orçamento em escrow e aprove cada marco com clareza — sem depender de promessas vagas.
+            Define deliverables, lock test USDC in escrow, and approve each milestone with a verifiable audit trail.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <a className="landing-button landing-button-primary" href={primaryCta}>
-              Explorar marketplace <ArrowRight aria-hidden="true" />
+              Explore the marketplace <ArrowRight aria-hidden="true" />
             </a>
-            <a className="landing-button landing-button-light" href="#como-funciona">
-              Entenda como funciona <ArrowDown aria-hidden="true" />
+            <a className="landing-button landing-button-light" href="#how-it-works">
+              See how it works <ArrowDown aria-hidden="true" />
             </a>
           </div>
           <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 border-t border-ink/10 pt-6 text-sm font-semibold text-landing-muted">
-            <span className="landing-check"><Check aria-hidden="true" /> Escrow por marcos</span>
-            <span className="landing-check"><Check aria-hidden="true" /> Pagamento em USDC</span>
-            <span className="landing-check"><Check aria-hidden="true" /> Histórico verificável</span>
+            <span className="landing-check"><Check aria-hidden="true" /> Milestone escrow</span>
+            <span className="landing-check"><Check aria-hidden="true" /> Base Sepolia test USDC</span>
+            <span className="landing-check"><Check aria-hidden="true" /> Verifiable history</span>
           </div>
         </div>
 
@@ -107,22 +107,22 @@ function Hero() {
 
 function ProductDemo() {
   return (
-    <div className="product-demo animate-landing-in" aria-label="Demonstração ilustrativa de um contrato no TrustWork">
+    <div className="product-demo animate-landing-in" aria-label="Illustrative TrustWork contract preview">
       <div className="product-demo-topbar">
         <div className="flex items-center gap-2"><i /><i /><i /></div>
-        <span>Prévia do produto · exemplo ilustrativo</span>
+        <span>Product preview · illustrative example</span>
       </div>
       <div className="grid gap-4 p-4 sm:p-6">
         <article className="demo-job-card">
           <div className="flex items-center justify-between gap-3">
-            <span className="demo-label">Contrato #104</span>
-            <span className="demo-status"><span /> Financiado</span>
+            <span className="demo-label">Contract #104</span>
+            <span className="demo-status"><span /> Funded</span>
           </div>
-          <h2 className="mt-5 max-w-md text-2xl font-extrabold leading-tight sm:text-[28px]">Redesign do checkout para SaaS B2B</h2>
+          <h2 className="mt-5 max-w-md text-2xl font-extrabold leading-tight sm:text-[28px]">B2B SaaS checkout redesign</h2>
           <div className="mt-6 grid grid-cols-3 border-y border-white/15 py-4">
-            <DemoStat label="Valor" value="1.800 USDC" />
-            <DemoStat label="Marcos" value="03" />
-            <DemoStat label="Rede" value="Base" />
+            <DemoStat label="Value" value="1,800 test USDC" />
+            <DemoStat label="Milestones" value="03" />
+            <DemoStat label="Network" value="Base Sepolia" />
           </div>
         </article>
 
@@ -131,23 +131,23 @@ function ProductDemo() {
             <span className="milestone-check"><CheckCircle2 aria-hidden="true" /></span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-extrabold">02. Protótipo navegável</p>
+                <p className="font-extrabold">02. Interactive prototype</p>
                 <span className="demo-label">600 USDC</span>
               </div>
-              <p className="mt-1 text-sm leading-6 text-landing-muted">Evidência enviada · aguardando aprovação</p>
+              <p className="mt-1 text-sm leading-6 text-landing-muted">Integrity proof submitted · awaiting approval</p>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-ink/10"><div className="h-full w-2/3 rounded-full bg-chain" /></div>
             </div>
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-          <div className="demo-balance"><LockKeyhole aria-hidden="true" /><span><small>Protegido em escrow</small><strong>1.200 USDC</strong></span></div>
-          <div className="demo-approve"><ShieldCheck aria-hidden="true" /><span><small>Próxima ação</small><strong>Revisar entrega</strong></span></div>
+          <div className="demo-balance"><LockKeyhole aria-hidden="true" /><span><small>Locked in testnet escrow</small><strong>1,200 test USDC</strong></span></div>
+          <div className="demo-approve"><ShieldCheck aria-hidden="true" /><span><small>Next action</small><strong>Review delivery</strong></span></div>
         </div>
       </div>
       <div className="absolute -bottom-5 -left-5 hidden rotate-[-4deg] items-center gap-3 border border-ink bg-white px-4 py-3 shadow-elevated sm:flex">
         <BadgeCheck className="h-5 w-5 text-trust-deep" aria-hidden="true" />
-        <span className="text-xs font-extrabold uppercase tracking-[.12em]">Marco registrado</span>
+        <span className="text-xs font-extrabold uppercase tracking-[.12em]">Milestone recorded</span>
       </div>
     </div>
   );
@@ -159,15 +159,15 @@ function DemoStat({ label, value }: { label: string; value: string }) {
 
 function Benefits() {
   const benefits = [
-    { icon: FileCheck2, number: "01", title: "Escopo que vira acordo", text: "Transforme o projeto em marcos objetivos, com valor e entrega esperada antes do início." },
-    { icon: LockKeyhole, number: "02", title: "Orçamento protegido", text: "O valor financiado fica bloqueado em escrow até que o trabalho de cada marco seja aprovado." },
-    { icon: Fingerprint, number: "03", title: "Confiança com evidência", text: "A entrega pode permanecer privada, enquanto sua integridade é registrada para verificação." }
+    { icon: FileCheck2, number: "01", title: "Scope becomes an agreement", text: "Turn the project into objective milestones with explicit testnet value and expected outcomes." },
+    { icon: LockKeyhole, number: "02", title: "Committed testnet funds", text: "Official Base Sepolia test USDC remains locked until each milestone is approved." },
+    { icon: Fingerprint, number: "03", title: "Integrity without hosting", text: "Original work stays with the user while its browser-generated digest can be verified." }
   ];
 
   return (
-    <section className="landing-section" id="beneficios" aria-labelledby="beneficios-titulo">
+    <section className="landing-section" id="benefits" aria-labelledby="benefits-title">
       <div className="landing-container">
-        <SectionIntro eyebrow="Menos incerteza, mais controle" title="Contratação profissional do acordo à aprovação." id="beneficios-titulo" />
+        <SectionIntro eyebrow="Less ambiguity, more control" title="A transparent path from agreement to approval." id="benefits-title" />
         <div className="mt-12 grid border-l border-t border-ink/15 md:grid-cols-3">
           {benefits.map(({ icon: Icon, number, title, text }) => (
             <article className="benefit-card" key={number}>
@@ -184,19 +184,19 @@ function Benefits() {
 
 function Workflow() {
   const steps = [
-    { icon: BriefcaseBusiness, title: "Defina marcos", text: "Descreva o resultado esperado, o valor e a sequência das entregas." },
-    { icon: WalletCards, title: "Financie o escrow", text: "Reserve USDC no contrato para deixar o pagamento comprometido." },
-    { icon: CheckCircle2, title: "Aprove e libere", text: "Revise a evidência e libere o valor do marco concluído." }
+    { icon: BriefcaseBusiness, title: "Define milestones", text: "Describe outcomes, testnet value, and delivery sequence before funding." },
+    { icon: WalletCards, title: "Fund the escrow", text: "Commit official Base Sepolia test USDC to the contract." },
+    { icon: CheckCircle2, title: "Approve and release", text: "Review the integrity proof and release a completed milestone." }
   ];
 
   return (
-    <section className="landing-section bg-ink text-white" id="como-funciona" aria-labelledby="fluxo-titulo">
+    <section className="landing-section bg-ink text-white" id="how-it-works" aria-labelledby="flow-title">
       <div className="landing-container">
         <div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr] lg:gap-20">
           <div>
-            <p className="landing-kicker landing-kicker-dark">Um fluxo simples</p>
-            <h2 className="landing-title mt-6 text-white" id="fluxo-titulo">Do briefing ao pagamento, em três movimentos.</h2>
-            <p className="mt-6 max-w-md text-lg leading-8 text-white/65">Você mantém a decisão. O contrato mantém o combinado.</p>
+            <p className="landing-kicker landing-kicker-dark">A focused workflow</p>
+            <h2 className="landing-title mt-6 text-white" id="flow-title">From brief to testnet settlement in three moves.</h2>
+            <p className="mt-6 max-w-md text-lg leading-8 text-white/65">People make the decision. The contract preserves the agreement.</p>
           </div>
           <ol className="workflow-list">
             {steps.map(({ icon: Icon, title, text }, index) => (
@@ -220,32 +220,32 @@ function MarketplacePreview() {
       <div className="landing-container">
         <div className="grid gap-12 lg:grid-cols-[.82fr_1.18fr] lg:items-center lg:gap-20">
           <div>
-            <p className="landing-kicker"><UserRoundCheck aria-hidden="true" /> Marketplace + reputação</p>
-            <h2 className="landing-title mt-6" id="marketplace-titulo">Avalie a oportunidade e os sinais antes de decidir.</h2>
-            <p className="mt-6 text-lg leading-8 text-landing-muted">Compare escopo, orçamento, compatibilidade e histórico verificável na mesma experiência.</p>
+            <p className="landing-kicker"><UserRoundCheck aria-hidden="true" /> Marketplace + reputation</p>
+            <h2 className="landing-title mt-6" id="marketplace-titulo">Inspect the opportunity and its signals before acting.</h2>
+            <p className="mt-6 text-lg leading-8 text-landing-muted">Anonymous visitors can compare scope, testnet budget, milestones, and indexed history.</p>
             <ul className="mt-8 space-y-4">
-              <FeatureLine text="Oportunidades com contexto de contrato" />
-              <FeatureLine text="Reputação baseada no histórico de execução" />
-              <FeatureLine text="Pipeline de interesses e matches" />
+              <FeatureLine text="Real indexed Base Sepolia contracts" />
+              <FeatureLine text="Reputation projected from execution history" />
+              <FeatureLine text="Optional wallet-authenticated interests" />
             </ul>
-            <a className="landing-text-link mt-9" href={primaryCta}>Conhecer o marketplace <ArrowRight aria-hidden="true" /></a>
+            <a className="landing-text-link mt-9" href={primaryCta}>Open the marketplace <ArrowRight aria-hidden="true" /></a>
           </div>
 
-          <div className="market-preview" aria-label="Exemplo ilustrativo do marketplace TrustWork">
-            <div className="market-preview-head"><span>Oportunidade em destaque</span><span>Exemplo ilustrativo</span></div>
+          <div className="market-preview" aria-label="Illustrative TrustWork marketplace example">
+            <div className="market-preview-head"><span>Featured contract</span><span>Illustrative example</span></div>
             <div className="p-5 sm:p-7">
-              <div className="flex flex-wrap items-center gap-2"><span className="match-pill">94% compatível</span><span className="demo-label">Produto digital</span></div>
-              <h3 className="mt-5 max-w-xl text-2xl font-extrabold sm:text-3xl">Design system para plataforma financeira</h3>
-              <p className="mt-3 max-w-xl leading-7 text-landing-muted">Estruturação de componentes, documentação e protótipo para os fluxos prioritários.</p>
+              <div className="flex flex-wrap items-center gap-2"><span className="match-pill">Indexed testnet</span><span className="demo-label">Digital product</span></div>
+              <h3 className="mt-5 max-w-xl text-2xl font-extrabold sm:text-3xl">Design system for a finance platform</h3>
+              <p className="mt-3 max-w-xl leading-7 text-landing-muted">Components, documentation, and an interactive prototype split into explicit milestones.</p>
               <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <PreviewStat label="Orçamento" value="USDC" />
-                <PreviewStat label="Formato" value="3 marcos" />
-                <PreviewStat label="Entrega" value="Privada" />
-                <PreviewStat label="Rede" value="Base" />
+                <PreviewStat label="Budget" value="test USDC" />
+                <PreviewStat label="Format" value="3 milestones" />
+                <PreviewStat label="Evidence" value="Digest" />
+                <PreviewStat label="Network" value="Sepolia" />
               </div>
               <div className="mt-5 grid gap-3 border-t border-ink/10 pt-5 sm:grid-cols-[1fr_auto] sm:items-center">
-                <div className="flex items-center gap-3"><span className="avatar-code">AM</span><span><strong className="block text-sm">Perfil profissional</strong><small className="text-landing-muted">Reputação verificável</small></span></div>
-                <div className="flex gap-1" aria-label="Quatro de cinco sinais de reputação"><i className="signal-on" /><i className="signal-on" /><i className="signal-on" /><i className="signal-on" /><i /></div>
+                <div className="flex items-center gap-3"><span className="avatar-code">TW</span><span><strong className="block text-sm">Wallet profile</strong><small className="text-landing-muted">Verifiable reputation</small></span></div>
+                <div className="flex gap-1" role="img" aria-label="Four of five reputation signals"><i className="signal-on" /><i className="signal-on" /><i className="signal-on" /><i className="signal-on" /><i /></div>
               </div>
             </div>
           </div>
@@ -270,12 +270,12 @@ function Freelancers() {
         <div className="grid gap-8 sm:grid-cols-[auto_1fr] sm:items-start">
           <span className="freelancer-mark"><CircleDollarSign aria-hidden="true" /></span>
           <div>
-            <p className="landing-kicker landing-kicker-coral">Também para quem entrega</p>
-            <h2 className="mt-5 max-w-3xl text-3xl font-extrabold leading-tight sm:text-4xl">Trabalhe com pagamento comprometido desde o início.</h2>
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-landing-muted">Freelancers encontram oportunidades, registram entregas e constroem um histórico profissional verificável.</p>
+            <p className="landing-kicker landing-kicker-coral">Built for the people delivering</p>
+            <h2 className="mt-5 max-w-3xl text-3xl font-extrabold leading-tight sm:text-4xl">Work against funds committed from the start.</h2>
+            <p className="mt-4 max-w-2xl text-lg leading-8 text-landing-muted">Freelancers can inspect contracts, submit integrity proofs, and build a verifiable testnet history.</p>
           </div>
         </div>
-        <a className="landing-button landing-button-dark" href={primaryCta}>Ver oportunidades <ArrowRight aria-hidden="true" /></a>
+        <a className="landing-button landing-button-dark" href={primaryCta}>View contracts <ArrowRight aria-hidden="true" /></a>
       </div>
     </section>
   );
@@ -283,21 +283,21 @@ function Freelancers() {
 
 function TrustArchitecture() {
   const layers = [
-    { icon: CircleDollarSign, tone: "blue", title: "USDC", text: "Valor estável para financiar e liberar cada marco." },
-    { icon: Network, tone: "green", title: "Base", text: "Rede usada para registrar as ações essenciais do escrow." },
-    { icon: LockKeyhole, tone: "coral", title: "Conteúdo privado", text: "Arquivos e detalhes sensíveis permanecem fora da blockchain." },
-    { icon: Fingerprint, tone: "gold", title: "Integridade on-chain", text: "A impressão digital da evidência permite verificar sua integridade." }
+    { icon: CircleDollarSign, tone: "blue", title: "Test USDC", text: "Official Base Sepolia test tokens fund and release each milestone." },
+    { icon: Network, tone: "green", title: "Base Sepolia", text: "The test network records essential escrow state changes." },
+    { icon: LockKeyhole, tone: "coral", title: "User-held content", text: "TrustWork does not host original evidence files or notes." },
+    { icon: Fingerprint, tone: "gold", title: "On-chain integrity", text: "A browser-generated bytes32 digest makes integrity independently verifiable." }
   ];
 
   return (
-    <section className="landing-section" id="confianca" aria-labelledby="confianca-titulo">
+    <section className="landing-section" id="trust" aria-labelledby="trust-title">
       <div className="landing-container">
         <div className="grid gap-12 lg:grid-cols-[.75fr_1.25fr] lg:gap-20">
           <div>
-            <p className="landing-kicker"><ShieldCheck aria-hidden="true" /> Arquitetura de confiança</p>
-            <h2 className="landing-title mt-6" id="confianca-titulo">Transparente no que importa. Privado no que é seu.</h2>
-            <p className="mt-6 text-lg leading-8 text-landing-muted">O TrustWork combina pagamentos programáveis e verificação de integridade sem publicar o conteúdo do trabalho.</p>
-            <p className="mt-6 border-l-2 border-chain pl-4 text-sm leading-6 text-landing-muted">O produto está em early access. Recursos, redes suportadas e fluxos podem evoluir durante esta fase.</p>
+            <p className="landing-kicker"><ShieldCheck aria-hidden="true" /> Trust architecture</p>
+            <h2 className="landing-title mt-6" id="trust-title">Transparent where it matters. Honest about what is not built.</h2>
+            <p className="mt-6 text-lg leading-8 text-landing-muted">TrustWork combines programmable testnet escrow with integrity verification while original content remains with the user.</p>
+            <p className="mt-6 border-l-2 border-chain pl-4 text-sm leading-6 text-landing-muted">Early access and testnet only. No real funds, external audit, private file hosting, or commercial availability.</p>
           </div>
           <div className="trust-grid">
             {layers.map(({ icon: Icon, tone, title, text }) => (
@@ -321,9 +321,9 @@ function FinalCta() {
         <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-[.18em] text-white/70">TrustWork · Early access</p>
-            <h2 className="mt-6 max-w-4xl text-4xl font-extrabold leading-[1.05] sm:text-5xl lg:text-6xl">Seu próximo contrato pode começar com o combinado protegido.</h2>
+            <h2 className="mt-6 max-w-4xl text-4xl font-extrabold leading-[1.05] sm:text-5xl lg:text-6xl">See a complete escrow system working on a public testnet.</h2>
           </div>
-          <a className="landing-button bg-white text-chain hover:bg-landing" href={primaryCta}>Explorar marketplace <ArrowUpRight aria-hidden="true" /></a>
+          <a className="landing-button bg-white text-chain hover:bg-landing" href={primaryCta}>Explore marketplace <ArrowUpRight aria-hidden="true" /></a>
         </div>
       </div>
     </section>
@@ -334,10 +334,10 @@ function LandingFooter() {
   return (
     <footer className="bg-landing px-4 py-10 sm:px-6">
       <div className="mx-auto flex max-w-[1360px] flex-col gap-8 border-t border-ink/10 pt-8 sm:flex-row sm:items-end sm:justify-between">
-        <div><a className="landing-brand" href="/"><span className="landing-brand-mark"><Layers3 aria-hidden="true" /></span><span>TrustWork</span></a><p className="mt-4 max-w-md text-sm leading-6 text-landing-muted">Contratos por marcos, escrow em USDC e reputação verificável.</p></div>
-        <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold"><a className="landing-nav-link" href="#como-funciona">Como funciona</a><a className="landing-nav-link" href="#confianca">Confiança</a><a className="landing-nav-link" href={primaryCta}>Marketplace</a></div>
+        <div><a className="landing-brand" href="/"><span className="landing-brand-mark"><Layers3 aria-hidden="true" /></span><span>TrustWork</span></a><p className="mt-4 max-w-md text-sm leading-6 text-landing-muted">Milestone contracts, test USDC escrow, and verifiable reputation on Base Sepolia.</p></div>
+        <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold"><a className="landing-nav-link" href="#how-it-works">How it works</a><a className="landing-nav-link" href="#trust">Trust model</a><a className="landing-nav-link" href={primaryCta}>Marketplace</a></div>
       </div>
-      <div className="mx-auto mt-8 flex max-w-[1360px] flex-col gap-2 border-t border-ink/10 pt-5 text-xs text-landing-muted sm:flex-row sm:justify-between"><p>© {new Date().getFullYear()} TrustWork.</p><p>Produto em early access · Português (Brasil)</p></div>
+      <div className="mx-auto mt-8 flex max-w-[1360px] flex-col gap-2 border-t border-ink/10 pt-5 text-xs text-landing-muted sm:flex-row sm:justify-between"><p>© {new Date().getFullYear()} TrustWork.</p><p>Early access · Base Sepolia testnet · English</p></div>
     </footer>
   );
 }

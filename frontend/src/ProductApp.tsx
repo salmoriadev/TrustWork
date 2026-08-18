@@ -26,6 +26,7 @@ import { SwipeDeck } from "./components/SwipeDeck";
 import { TermsBanner } from "./components/TermsBanner";
 import { WalletBar } from "./components/WalletBar";
 import {
+  authenticateWallet,
   createSwipe,
   fetchMarketplaceJobs,
   fetchMatches,
@@ -37,10 +38,10 @@ import { runtimeConfig } from "./lib/config";
 import { formatEscrowState } from "./lib/formatters";
 import { resolveReputationWallet } from "./lib/reputationTarget";
 import type { MarketplaceJob, Reputation } from "./lib/types";
-import { connectWalletConnect, type WalletSession } from "./lib/wallet";
+import { connectWallet, type AuthenticatedWalletSession, type WalletKind } from "./lib/wallet";
 
 type ScreenId = "marketplace" | "escrow" | "evidence" | "profile" | "matches";
-type JobsState = "loading" | "ready" | "demo" | "empty" | "error";
+type JobsState = "loading" | "waking" | "ready" | "demo" | "empty" | "error";
 
 const emptyReputation: Reputation = {
   completedJobs: 0,
@@ -60,42 +61,42 @@ const screens: Array<{
 }> = [
   {
     id: "marketplace",
-    label: "Descobrir",
-    eyebrow: "Marketplace curado",
-    title: "Encontre trabalho que combina com você",
-    description: "Compare escopo, orçamento e reputação antes de demonstrar interesse.",
+    label: "Discover",
+    eyebrow: "Indexed marketplace",
+    title: "Explore real Base Sepolia escrows",
+    description: "Compare scope, testnet budget, milestones, and on-chain state without connecting a wallet.",
     icon: BriefcaseBusiness
   },
   {
     id: "escrow",
     label: "Escrow",
-    eyebrow: "Contrato ativo",
-    title: "Acompanhe entregas e pagamentos",
-    description: "Milestones, saldos e ações críticas reunidos em uma única visão.",
+    eyebrow: "Active contract",
+    title: "Track delivery and testnet settlement",
+    description: "Milestones, balances, proofs, and contract actions in one technical view.",
     icon: CircleDollarSign
   },
   {
     id: "evidence",
-    label: "Evidências",
-    eyebrow: "Entrega protegida",
-    title: "Registre provas sem expor seu trabalho",
-    description: "O conteúdo permanece privado; apenas a impressão digital vai para o contrato.",
+    label: "Evidence",
+    eyebrow: "Integrity proof",
+    title: "Prove integrity without uploading the work",
+    description: "Files and notes are hashed in your browser; TrustWork stores metadata and the digest only.",
     icon: FileCheck2
   },
   {
     id: "profile",
-    label: "Perfil",
-    eyebrow: "Identidade profissional",
-    title: "Construa reputação verificável",
-    description: "Configure seu perfil e acompanhe sinais gerados pelo histórico on-chain.",
+    label: "Profile",
+    eyebrow: "Wallet identity",
+    title: "Build verifiable reputation",
+    description: "Configure a public profile and inspect signals projected from on-chain history.",
     icon: UserRound
   },
   {
     id: "matches",
     label: "Matches",
-    eyebrow: "Seu pipeline",
-    title: "Oportunidades em andamento",
-    description: "Retome conversas e contratos sem perder o contexto de cada oportunidade.",
+    eyebrow: "Your testnet pipeline",
+    title: "Saved opportunities",
+    description: "Wallet-authenticated interests stay separate from anonymous read-only browsing.",
     icon: UsersRound
   }
 ];
@@ -103,7 +104,7 @@ const screens: Array<{
 export default function ProductApp() {
   const [activeScreen, setActiveScreen] = useState<ScreenId>("marketplace");
   const [activeIndex, setActiveIndex] = useState(0);
-  const [session, setSession] = useState<WalletSession | null>(null);
+  const [session, setSession] = useState<AuthenticatedWalletSession | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [matches, setMatches] = useState<string[]>([]);
   const [apiJobs, setApiJobs] = useState<MarketplaceJob[]>([]);
@@ -112,7 +113,7 @@ export default function ProductApp() {
   const [jobsError, setJobsError] = useState<string | null>(null);
   const [profileName, setProfileName] = useState("TrustWork User");
   const [rolePreference, setRolePreference] = useState<"client" | "freelancer" | "both">("both");
-  const [profileStatus, setProfileStatus] = useState("Conecte sua carteira para ativar o perfil.");
+  const [profileStatus, setProfileStatus] = useState("Connect and sign in to activate your profile.");
   const [activeReputation, setActiveReputation] = useState<{
     walletAddress: string;
     value: Reputation;
@@ -122,7 +123,7 @@ export default function ProductApp() {
     setJobsState("loading");
     setJobsError(null);
     try {
-      const remoteJobs = await fetchMarketplaceJobs();
+      const remoteJobs = await fetchMarketplaceJobs(() => setJobsState("waking"));
       if (remoteJobs.length > 0) {
         setApiJobs(remoteJobs);
         setActiveIndex(0);
@@ -147,7 +148,7 @@ export default function ProductApp() {
         setJobsState("demo");
       } else {
         setApiJobs([]);
-        setJobsError(error instanceof Error ? error.message : "API indisponível");
+        setJobsError(error instanceof Error ? error.message : "The demo API is unavailable.");
         setJobsState("error");
       }
     }
@@ -197,16 +198,20 @@ export default function ProductApp() {
   async function refreshActiveReputation() {
     if (!reputationWallet) {
       if (activeScreen === "profile") {
-        setProfileStatus("Conecte sua carteira para atualizar a reputação.");
+        setProfileStatus("Connect your wallet to refresh reputation.");
       }
       return;
     }
     try {
-      const reputation = await refreshReputation(reputationWallet);
+      if (!session || session.address.toLowerCase() !== reputationWallet.toLowerCase()) {
+        setProfileStatus("Only the authenticated wallet can refresh its own reputation.");
+        return;
+      }
+      const reputation = await refreshReputation(session);
       setActiveReputation({ walletAddress: reputationWallet, value: reputation });
-      setProfileStatus("Reputação verificável atualizada.");
+      setProfileStatus("Verifiable reputation refreshed.");
     } catch (error) {
-      setProfileStatus(error instanceof Error ? error.message : "Não foi possível atualizar a reputação.");
+      setProfileStatus(error instanceof Error ? error.message : "Reputation could not be refreshed.");
     }
   }
 
@@ -218,17 +223,17 @@ export default function ProductApp() {
     if (!session || !activeJob?.dbId) return;
     try {
       await createSwipe({
-        actorWallet: session.address,
+        session,
         targetId: activeJob.dbId,
         direction,
         context: { onchainJobId: activeJob.id, source: "swipe-deck" }
       });
       if (direction !== "left") {
-        const remoteMatches = await fetchMatches(session.address);
+        const remoteMatches = await fetchMatches(session);
         setMatches(remoteMatches.map((job) => job.id));
       }
     } catch (error) {
-      setProfileStatus(error instanceof Error ? error.message : "Não foi possível salvar seu interesse.");
+      setProfileStatus(error instanceof Error ? error.message : "Your interest could not be saved.");
     }
   }
 
@@ -244,26 +249,27 @@ export default function ProductApp() {
     nextJob();
   }
 
-  async function saveProfile(walletAddress = session?.address) {
-    if (!walletAddress) return;
+  async function saveProfile(activeSession = session) {
+    if (!activeSession) return;
     try {
-      const profile = await upsertUserProfile({ walletAddress, displayName: profileName, rolePreference });
+      const profile = await upsertUserProfile({ session: activeSession, displayName: profileName, rolePreference });
       setProfileName(profile.display_name ?? profileName);
       setRolePreference(profile.role_preference ?? "both");
-      setProfileStatus("Perfil salvo. Seus próximos interesses serão sincronizados.");
+      setProfileStatus("Profile saved. Future interests will use this verified wallet.");
     } catch (error) {
-      setProfileStatus(error instanceof Error ? error.message : "Não foi possível salvar o perfil.");
+      setProfileStatus(error instanceof Error ? error.message : "The profile could not be saved.");
     }
   }
 
-  async function handleConnect() {
+  async function handleConnect(kind: WalletKind) {
     try {
       setWalletError(null);
-      const nextSession = await connectWalletConnect();
+      const walletSession = await connectWallet(kind);
+      const nextSession = await authenticateWallet(walletSession);
       setSession(nextSession);
-      await saveProfile(nextSession.address);
+      await saveProfile(nextSession);
     } catch (error) {
-      setWalletError(error instanceof Error ? error.message : "Falha ao conectar");
+      setWalletError(error instanceof Error ? error.message : "Wallet connection failed.");
     }
   }
 
@@ -280,7 +286,7 @@ export default function ProductApp() {
       <SideNavigation activeScreen={activeScreen} matchCount={matches.length} onNavigate={setActiveScreen} />
 
       <div className="min-w-0 lg:pl-60">
-        <WalletBar session={session} onConnect={handleConnect} error={walletError} />
+        <WalletBar session={session} onConnect={(kind) => void handleConnect(kind)} error={walletError} />
         <TermsBanner />
 
         <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
@@ -307,7 +313,7 @@ export default function ProductApp() {
                   <ReputationPanel reputation={displayedReputation} onRefresh={refreshActiveReputation} compact />
                 </section>
                 <button className="btn-primary w-full" type="button" onClick={() => setActiveScreen("escrow")}>
-                  Ver contrato e milestones
+                  View contract and milestones
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </aside>
@@ -321,7 +327,7 @@ export default function ProductApp() {
                 <EscrowTimeline job={activeJob} />
                 <ReputationPanel reputation={displayedReputation} onRefresh={refreshActiveReputation} />
               </section>
-              <EscrowActionPanel activeJob={activeJob} onRefresh={reloadJobs} />
+              <EscrowActionPanel activeJob={activeJob} session={session} onRefresh={reloadJobs} />
             </div>
           )}
 
@@ -383,7 +389,7 @@ function SideNavigation({
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-line bg-white px-4 py-5 lg:flex lg:flex-col">
       <div className="px-2"><Brand /></div>
-      <nav className="mt-9 space-y-1" aria-label="Navegação principal">
+      <nav className="mt-9 space-y-1" aria-label="Primary navigation">
         {screens.map((screen) => {
           const Icon = screen.icon;
           const active = screen.id === activeScreen;
@@ -400,9 +406,9 @@ function SideNavigation({
         <div className="rounded-lg bg-app p-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-ink">
             <span className="h-2 w-2 rounded-full bg-trust" />
-            {runtimeConfig.networkName} configurada
+            {runtimeConfig.networkName} configured
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-muted">Ambiente {runtimeConfig.environment}; chain ID {runtimeConfig.chainId}.</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted">{runtimeConfig.environment} environment; chain ID {runtimeConfig.chainId}.</p>
         </div>
         <p className="mt-4 px-2 text-[11px] text-muted">v0.1 · {runtimeConfig.environment}</p>
       </div>
@@ -412,7 +418,7 @@ function SideNavigation({
 
 function MobileNavigation({ activeScreen, onNavigate }: { activeScreen: ScreenId; onNavigate: (screen: ScreenId) => void }) {
   return (
-    <nav className="mobile-dock lg:hidden" aria-label="Navegação principal">
+    <nav className="mobile-dock lg:hidden" aria-label="Primary navigation">
       {screens.map((screen) => {
         const Icon = screen.icon;
         const active = screen.id === activeScreen;
@@ -452,34 +458,35 @@ function MarketplaceDataState({
   error: string | null;
   onRetry: () => void;
 }) {
-  const loading = state === "loading";
+  const loading = state === "loading" || state === "waking";
   return (
     <section className="surface flex min-h-[360px] flex-col items-center justify-center px-5 py-12 text-center">
       <div className="grid h-12 w-12 place-items-center rounded-lg bg-chain-soft text-chain">
         {loading ? <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" /> : <DatabaseZap className="h-5 w-5" aria-hidden="true" />}
       </div>
       <h2 className="mt-5 text-xl font-extrabold text-ink">
-        {loading ? "Carregando oportunidades" : state === "empty" ? "Marketplace ainda vazio" : "Dados indisponíveis"}
+        {state === "waking" ? "Waking up the demo API" : loading ? "Loading indexed contracts" : state === "empty" ? "No indexed contracts yet" : "Demo data unavailable"}
       </h2>
       <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
         {loading
-          ? "Consultando a API configurada para este ambiente."
+          ? state === "waking" ? "Render free services can sleep. Retrying for a bounded period…" : "Querying the public read-only API."
           : state === "empty"
-            ? "A API respondeu corretamente, mas ainda não há contratos indexados."
-            : `Não foi possível consultar a API${error ? `: ${error}` : "."}`}
+            ? "The API is healthy, but no Base Sepolia contracts have been indexed yet."
+            : `The API did not recover${error ? `: ${error}` : "."}`}
       </p>
-      {!loading ? <button className="btn-ghost mt-5" type="button" onClick={onRetry}><RefreshCw className="h-4 w-4" /> Tentar novamente</button> : null}
+      {!loading ? <button className="btn-ghost mt-5" type="button" onClick={onRetry}><RefreshCw className="h-4 w-4" /> Retry</button> : null}
     </section>
   );
 }
 
 function jobsStateLabel(state: JobsState): string {
   const labels: Record<JobsState, string> = {
-    loading: "Consultando API",
-    ready: "Dados da API",
-    demo: "Dados de demonstração",
-    empty: "API sem contratos",
-    error: "API indisponível"
+    loading: "Consulting API",
+    waking: "Waking demo API",
+    ready: "Live indexed data",
+    demo: "Local demo data",
+    empty: "No indexed contracts",
+    error: "API unavailable"
   };
   return labels[state];
 }
@@ -489,16 +496,16 @@ function ContractSummary({ activeJob, dataSource }: { activeJob: MarketplaceJob;
     <section className="border-b border-line bg-white p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="eyebrow">Contrato #{activeJob.id} · {dataSource === "api" ? "ao vivo" : "demonstração"}</p>
+          <p className="eyebrow">Contract #{activeJob.id} · {dataSource === "api" ? "indexed" : "local fixture"}</p>
           <h2 className="mt-2 text-xl font-extrabold leading-tight text-ink">{activeJob.title}</h2>
           <p className="mt-1 text-sm text-muted">{activeJob.client}</p>
         </div>
         <span className="status status-chain shrink-0">{formatEscrowState(activeJob.escrowState)}</span>
       </div>
       <div className="mt-5 grid grid-cols-3 divide-x divide-line border-y border-line py-4">
-        <ContractStat icon={TimerReset} label="Prazo" value="7 dias" />
-        <ContractStat icon={MessageSquareText} label="Canal" value="Privado" />
-        <ContractStat icon={ShieldCheck} label="Rede" value="Base" />
+        <ContractStat icon={TimerReset} label="Review" value="7 days" />
+        <ContractStat icon={MessageSquareText} label="Evidence" value="Digest only" />
+        <ContractStat icon={ShieldCheck} label="Network" value="Base Sepolia" />
       </div>
     </section>
   );
@@ -507,10 +514,10 @@ function ContractSummary({ activeJob, dataSource }: { activeJob: MarketplaceJob;
 function ContractMiniCard({ activeJob, onOpen }: { activeJob: MarketplaceJob; onOpen: () => void }) {
   return (
     <article className="surface p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-3"><p className="eyebrow">Contrato ativo</p><span className="status status-chain">{formatEscrowState(activeJob.escrowState)}</span></div>
+      <div className="flex items-center justify-between gap-3"><p className="eyebrow">Active contract</p><span className="status status-chain">{formatEscrowState(activeJob.escrowState)}</span></div>
       <h2 className="mt-3 text-lg font-extrabold leading-snug text-ink">#{activeJob.id} · {activeJob.title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">{activeJob.summary}</p>
-      <button className="btn-ghost mt-5 w-full" type="button" onClick={onOpen}>Abrir escrow <ArrowUpRight className="h-4 w-4" aria-hidden="true" /></button>
+      <button className="btn-ghost mt-5 w-full" type="button" onClick={onOpen}>Open escrow <ArrowUpRight className="h-4 w-4" aria-hidden="true" /></button>
     </article>
   );
 }
@@ -519,20 +526,20 @@ function MatchList({ jobs: visibleJobs, hasMatches, onOpenJob }: { jobs: Marketp
   return (
     <section className="surface p-5 sm:p-6">
       <div className="mb-5 flex items-end justify-between gap-4">
-        <div><p className="eyebrow">{hasMatches ? "Interesses salvos" : "Sugestões para explorar"}</p><h2 className="mt-2 text-xl font-extrabold text-ink">Seu pipeline</h2></div>
-        <span className="text-sm font-semibold text-muted">{visibleJobs.length} oportunidades</span>
+        <div><p className="eyebrow">{hasMatches ? "Saved interests" : "Contracts to explore"}</p><h2 className="mt-2 text-xl font-extrabold text-ink">Your pipeline</h2></div>
+        <span className="text-sm font-semibold text-muted">{visibleJobs.length} opportunities</span>
       </div>
-      {!hasMatches && <div className="mb-5 flex gap-3 rounded-lg border border-chain/20 bg-chain-soft p-4 text-sm text-ink"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-chain" /><p>Você ainda não salvou oportunidades. Estas são as melhores sugestões para começar.</p></div>}
+      {!hasMatches && <div className="mb-5 flex gap-3 rounded-lg border border-chain/20 bg-chain-soft p-4 text-sm text-ink"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-chain" /><p>Connect a wallet to save interests. Anonymous visitors can still inspect every indexed contract.</p></div>}
       <div className="divide-y divide-line">
         {visibleJobs.map((job) => (
           <article className="group grid gap-4 py-5 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" key={job.id}>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2"><span className="status status-trust">{job.matchScore}% compatível</span><span className="text-xs text-muted">#{job.id}</span></div>
+              <div className="flex flex-wrap items-center gap-2"><span className="status status-trust">Indexed testnet</span><span className="text-xs text-muted">#{job.id}</span></div>
               <h3 className="mt-2 text-base font-extrabold text-ink">{job.title}</h3>
               <p className="mt-1 text-sm text-muted">{job.client} · {job.budget}</p>
               <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">{job.summary}</p>
             </div>
-            <button className="btn-ghost w-full sm:w-auto" type="button" onClick={() => onOpenJob(job.id)}>Ver contrato <ArrowRight className="h-4 w-4" /></button>
+            <button className="btn-ghost w-full sm:w-auto" type="button" onClick={() => onOpenJob(job.id)}>View contract <ArrowRight className="h-4 w-4" /></button>
           </article>
         ))}
       </div>

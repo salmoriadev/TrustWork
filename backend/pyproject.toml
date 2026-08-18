@@ -1,13 +1,16 @@
 [project]
-name = "freelance-escrow-backend"
+name = "trustwork-api"
 version = "0.1.0"
-description = "FastAPI backend and event indexer for the swipe-based freelance escrow marketplace."
-requires-python = ">=3.11"
+description = "FastAPI API and Base Sepolia event indexer for the TrustWork escrow portfolio demo."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.14.0",
     "fastapi>=0.115.0",
+    "pyjwt>=2.10.0",
     "psycopg[binary]>=3.2.0",
     "pydantic-settings>=2.6.0",
-    "redis>=5.1.0",
     "sqlalchemy>=2.0.35",
     "tenacity>=9.0.0",
     "uvicorn>=0.32.0",
@@ -31,7 +34,7 @@ include = ["app*"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

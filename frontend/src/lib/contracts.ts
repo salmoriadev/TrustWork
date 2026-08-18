@@ -1,207 +1,141 @@
-import { createWalletClient, custom, keccak256, toBytes, type EIP1193Provider, type Hex } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  custom,
+  http,
+  type Hash,
+  type Hex,
+  type TransactionReceipt
+} from "viem";
+import { baseSepolia } from "viem/chains";
 
 import type { EscrowConfig, PreparedJob } from "./api";
+import { syncIndexer } from "./api";
+import { runtimeConfig } from "./config";
+import { ensureBaseSepolia, type AuthenticatedWalletSession } from "./wallet";
 
-declare global {
-  interface Window {
-    ethereum?: EIP1193Provider;
-  }
-}
+export type TransactionStage =
+  | { state: "awaiting_signature"; label: string }
+  | { state: "submitted"; label: string; hash: Hash; explorerUrl: string }
+  | { state: "replaced"; label: string; hash: Hash; explorerUrl: string }
+  | { state: "confirmed"; label: string; hash: Hash; explorerUrl: string; blockNumber: bigint }
+  | { state: "indexed"; label: string; hash: Hash; explorerUrl: string; blockNumber: bigint }
+  | { state: "reverted"; label: string; hash: Hash; explorerUrl: string };
+
+export type TransactionReporter = (stage: TransactionStage) => void;
 
 const escrowAbi = [
-  {
-    type: "function",
-    name: "createJob",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "jobId", type: "uint256" },
-      { name: "freelancer", type: "address" },
-      { name: "token", type: "address" },
-      { name: "milestoneAmounts", type: "uint256[]" }
-    ],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "fundJob",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "jobId", type: "uint256" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "submitMilestone",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "milestoneId", type: "uint256" },
-      { name: "evidenceHash", type: "bytes32" }
-    ],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "approveMilestone",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "milestoneId", type: "uint256" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "requestRevision",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "milestoneId", type: "uint256" },
-      { name: "evidenceHash", type: "bytes32" }
-    ],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "openDispute",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "milestoneId", type: "uint256" },
-      { name: "arbitrator", type: "address" },
-      { name: "evidenceHash", type: "bytes32" }
-    ],
-    outputs: [{ name: "disputeId", type: "uint256" }]
-  },
-  {
-    type: "function",
-    name: "releaseAfterTimeout",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "milestoneId", type: "uint256" }],
-    outputs: []
-  }
+  { type: "function", name: "createJob", stateMutability: "nonpayable", inputs: [{ name: "jobId", type: "uint256" }, { name: "freelancer", type: "address" }, { name: "token", type: "address" }, { name: "milestoneAmounts", type: "uint256[]" }], outputs: [] },
+  { type: "function", name: "fundJob", stateMutability: "nonpayable", inputs: [{ name: "jobId", type: "uint256" }], outputs: [] },
+  { type: "function", name: "submitMilestone", stateMutability: "nonpayable", inputs: [{ name: "milestoneId", type: "uint256" }, { name: "evidenceHash", type: "bytes32" }], outputs: [] },
+  { type: "function", name: "approveMilestone", stateMutability: "nonpayable", inputs: [{ name: "milestoneId", type: "uint256" }], outputs: [] },
+  { type: "function", name: "requestRevision", stateMutability: "nonpayable", inputs: [{ name: "milestoneId", type: "uint256" }, { name: "evidenceHash", type: "bytes32" }], outputs: [] },
+  { type: "function", name: "openDispute", stateMutability: "nonpayable", inputs: [{ name: "milestoneId", type: "uint256" }, { name: "arbitrator", type: "address" }, { name: "evidenceHash", type: "bytes32" }], outputs: [{ name: "disputeId", type: "uint256" }] },
+  { type: "function", name: "releaseAfterTimeout", stateMutability: "nonpayable", inputs: [{ name: "milestoneId", type: "uint256" }], outputs: [] }
 ] as const;
 
 const erc20Abi = [
-  {
-    type: "function",
-    name: "approve",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" }
-    ],
-    outputs: [{ name: "", type: "bool" }]
-  }
+  { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] }
 ] as const;
 
-export async function approveUsdc(preparedJob: PreparedJob): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
-    address: preparedJob.usdc_contract_address as Hex,
+export function approveUsdc(session: AuthenticatedWalletSession, prepared: PreparedJob, report: TransactionReporter) {
+  return writeAndConfirm(session, "USDC approval", report, false, (wallet) => wallet.writeContract({
+    address: prepared.usdc_contract_address as Hex,
+    account: session.address,
     abi: erc20Abi,
+    chain: baseSepolia,
     functionName: "approve",
-    chain: undefined,
-    args: [preparedJob.escrow_contract_address as Hex, BigInt(preparedJob.total_amount_raw)]
-  });
+    args: [prepared.escrow_contract_address as Hex, BigInt(prepared.total_amount_raw)]
+  }));
 }
 
-export async function createPreparedJob(preparedJob: PreparedJob): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
-    address: preparedJob.escrow_contract_address as Hex,
+export function createPreparedJob(session: AuthenticatedWalletSession, prepared: PreparedJob, report: TransactionReporter) {
+  return writeAndConfirm(session, "Create escrow", report, true, (wallet) => wallet.writeContract({
+    address: prepared.escrow_contract_address as Hex,
+    account: session.address,
     abi: escrowAbi,
+    chain: baseSepolia,
     functionName: "createJob",
-    chain: undefined,
-    args: [
-      BigInt(preparedJob.job_id),
-      preparedJob.freelancer_wallet as Hex,
-      preparedJob.usdc_contract_address as Hex,
-      preparedJob.milestone_amounts_raw.map(BigInt)
-    ]
-  });
+    args: [BigInt(prepared.job_id), prepared.freelancer_wallet as Hex, prepared.usdc_contract_address as Hex, prepared.milestone_amounts_raw.map(BigInt)]
+  }));
 }
 
-export async function fundJob(config: EscrowConfig, jobId: string): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
-    address: config.escrow_contract_address as Hex,
-    abi: escrowAbi,
-    functionName: "fundJob",
-    chain: undefined,
-    args: [BigInt(jobId)]
-  });
+export function fundJob(session: AuthenticatedWalletSession, config: EscrowConfig, jobId: string, report: TransactionReporter) {
+  return escrowWrite(session, config, "Fund escrow", report, "fundJob", [BigInt(jobId)]);
 }
 
-export async function submitMilestone(
+export function submitMilestone(session: AuthenticatedWalletSession, config: EscrowConfig, milestoneId: string, digest: Hex, report: TransactionReporter) {
+  return escrowWrite(session, config, "Submit integrity proof", report, "submitMilestone", [BigInt(milestoneId), digest]);
+}
+
+export function approveMilestone(session: AuthenticatedWalletSession, config: EscrowConfig, milestoneId: string, report: TransactionReporter) {
+  return escrowWrite(session, config, "Approve milestone", report, "approveMilestone", [BigInt(milestoneId)]);
+}
+
+export function requestRevision(session: AuthenticatedWalletSession, config: EscrowConfig, milestoneId: string, digest: Hex, report: TransactionReporter) {
+  return escrowWrite(session, config, "Request revision", report, "requestRevision", [BigInt(milestoneId), digest]);
+}
+
+export function openDispute(session: AuthenticatedWalletSession, config: EscrowConfig, milestoneId: string, digest: Hex, report: TransactionReporter) {
+  return escrowWrite(session, config, "Open dispute", report, "openDispute", [BigInt(milestoneId), config.escrow_arbitrator as Hex, digest]);
+}
+
+export function releaseAfterTimeout(session: AuthenticatedWalletSession, config: EscrowConfig, milestoneId: string, report: TransactionReporter) {
+  return escrowWrite(session, config, "Release after timeout", report, "releaseAfterTimeout", [BigInt(milestoneId)]);
+}
+
+async function escrowWrite(
+  session: AuthenticatedWalletSession,
   config: EscrowConfig,
-  milestoneId: string,
-  evidence: string
-): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
+  label: string,
+  report: TransactionReporter,
+  functionName: "fundJob" | "submitMilestone" | "approveMilestone" | "requestRevision" | "openDispute" | "releaseAfterTimeout",
+  args: readonly unknown[]
+) {
+  return writeAndConfirm(session, label, report, true, (wallet) => wallet.writeContract({
     address: config.escrow_contract_address as Hex,
+    account: session.address,
     abi: escrowAbi,
-    functionName: "submitMilestone",
-    chain: undefined,
-    args: [BigInt(milestoneId), evidenceHash(evidence)]
-  });
+    chain: baseSepolia,
+    functionName,
+    args: args as never
+  }));
 }
 
-export async function approveMilestone(config: EscrowConfig, milestoneId: string): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
-    address: config.escrow_contract_address as Hex,
-    abi: escrowAbi,
-    functionName: "approveMilestone",
-    chain: undefined,
-    args: [BigInt(milestoneId)]
+async function writeAndConfirm(
+  session: AuthenticatedWalletSession,
+  label: string,
+  report: TransactionReporter,
+  shouldIndex: boolean,
+  write: (wallet: ReturnType<typeof createWalletClient>) => Promise<Hash>
+): Promise<TransactionReceipt> {
+  await ensureBaseSepolia(session.provider);
+  const wallet = createWalletClient({ account: session.address, chain: baseSepolia, transport: custom(session.provider) });
+  const publicClient = createPublicClient({ chain: baseSepolia, transport: http(runtimeConfig.rpcUrl) });
+  report({ state: "awaiting_signature", label });
+  const hash = await write(wallet);
+  let activeHash = hash;
+  report({ state: "submitted", label, hash, explorerUrl: explorerUrl(hash) });
+  const receipt = await publicClient.waitForTransactionReceipt({
+    hash,
+    confirmations: 1,
+    onReplaced: ({ transaction }) => {
+      activeHash = transaction.hash;
+      report({ state: "replaced", label, hash: activeHash, explorerUrl: explorerUrl(activeHash) });
+    }
   });
-}
-
-export async function requestRevision(
-  config: EscrowConfig,
-  milestoneId: string,
-  evidence: string
-): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
-    address: config.escrow_contract_address as Hex,
-    abi: escrowAbi,
-    functionName: "requestRevision",
-    chain: undefined,
-    args: [BigInt(milestoneId), evidenceHash(evidence)]
-  });
-}
-
-export async function openDispute(
-  config: EscrowConfig,
-  milestoneId: string,
-  evidence: string
-): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
-    address: config.escrow_contract_address as Hex,
-    abi: escrowAbi,
-    functionName: "openDispute",
-    chain: undefined,
-    args: [BigInt(milestoneId), config.escrow_arbitrator as Hex, evidenceHash(evidence)]
-  });
-}
-
-export async function releaseAfterTimeout(config: EscrowConfig, milestoneId: string): Promise<Hex> {
-  const wallet = await getWallet();
-  return wallet.writeContract({
-    address: config.escrow_contract_address as Hex,
-    abi: escrowAbi,
-    functionName: "releaseAfterTimeout",
-    chain: undefined,
-    args: [BigInt(milestoneId)]
-  });
-}
-
-async function getWallet() {
-  if (!window.ethereum) {
-    throw new Error("Nenhuma carteira EIP-1193 encontrada no navegador");
+  if (receipt.status === "reverted") {
+    report({ state: "reverted", label, hash: activeHash, explorerUrl: explorerUrl(activeHash) });
+    throw new Error(`${label} reverted on Base Sepolia.`);
   }
-
-  const [account] = (await window.ethereum.request({ method: "eth_requestAccounts" })) as Hex[];
-  return createWalletClient({ account, transport: custom(window.ethereum) });
+  report({ state: "confirmed", label, hash: activeHash, explorerUrl: explorerUrl(activeHash), blockNumber: receipt.blockNumber });
+  if (shouldIndex) {
+    await syncIndexer(session, activeHash, receipt.blockNumber);
+    report({ state: "indexed", label, hash: activeHash, explorerUrl: explorerUrl(activeHash), blockNumber: receipt.blockNumber });
+  }
+  return receipt;
 }
 
-function evidenceHash(value: string): Hex {
-  return keccak256(toBytes(value.trim() || "matchescrow-demo-evidence"));
+function explorerUrl(hash: Hash): string {
+  return `${runtimeConfig.explorerBaseUrl}/tx/${hash}`;
 }

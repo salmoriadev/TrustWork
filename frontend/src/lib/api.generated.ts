@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/auth/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Auth Challenge */
+        post: operations["auth_challenge_auth_challenge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Auth Verify */
+        post: operations["auth_verify_auth_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/disputes": {
         parameters: {
             query?: never;
@@ -79,8 +113,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health */
-        get: operations["health_health_get"];
+        /** Health Compatibility */
+        get: operations["health_compatibility_health_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -89,7 +123,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/indexer/poll": {
+    "/health/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Live */
+        get: operations["health_live_health_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Ready */
+        get: operations["health_ready_health_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/indexer/reconcile": {
         parameters: {
             query?: never;
             header?: never;
@@ -98,8 +166,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Poll Indexer */
-        post: operations["poll_indexer_indexer_poll_post"];
+        /** Reconcile Indexer */
+        post: operations["reconcile_indexer_indexer_reconcile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/indexer/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Indexer */
+        post: operations["sync_indexer_indexer_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -298,6 +383,51 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AuthChallengeRead */
+        AuthChallengeRead: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Message */
+            message: string;
+            /** Nonce */
+            nonce: string;
+        };
+        /** AuthChallengeRequest */
+        AuthChallengeRequest: {
+            /** Chain Id */
+            chain_id: number;
+            /** Wallet Address */
+            wallet_address: string;
+        };
+        /** AuthTokenRead */
+        AuthTokenRead: {
+            /** Access Token */
+            access_token: string;
+            /** Chain Id */
+            chain_id: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
+            /** Wallet Address */
+            wallet_address: string;
+        };
+        /** AuthVerifyRequest */
+        AuthVerifyRequest: {
+            /** Message */
+            message: string;
+            /** Signature */
+            signature: string;
+        };
         /** DisputeRead */
         DisputeRead: {
             /** Arbitrator Wallet */
@@ -348,19 +478,16 @@ export interface components {
         };
         /** EvidenceCreateRequest */
         EvidenceCreateRequest: {
-            /** Body */
-            body: string;
             /**
              * Content Type
-             * @default text/plain
+             * @default application/octet-stream
              */
             content_type: string;
+            /** Digest */
+            digest: string;
             /** Dispute Id */
             dispute_id?: string | null;
-            /**
-             * File Name
-             * @default evidence.txt
-             */
+            /** File Name */
             file_name: string;
             /**
              * Job Id
@@ -369,18 +496,13 @@ export interface components {
             job_id: string;
             /** Milestone Id */
             milestone_id?: string | null;
-            /** Uploader Wallet */
-            uploader_wallet: string;
-            /**
-             * Visibility
-             * @default private
-             */
-            visibility: string;
+            /** Size Bytes */
+            size_bytes: number;
         };
         /** EvidenceRead */
         EvidenceRead: {
             /** Content Type */
-            content_type: string | null;
+            content_type: string;
             /**
              * Created At
              * Format: date-time
@@ -388,6 +510,8 @@ export interface components {
             created_at: string;
             /** Dispute Id */
             dispute_id: string | null;
+            /** File Name */
+            file_name: string;
             /**
              * Id
              * Format: uuid
@@ -403,13 +527,9 @@ export interface components {
             /** Sha256 Hash */
             sha256_hash: string;
             /** Size Bytes */
-            size_bytes: number | null;
-            /** Storage Uri */
-            storage_uri: string;
+            size_bytes: number;
             /** Uploader Wallet */
             uploader_wallet: string;
-            /** Visibility */
-            visibility: string;
         };
         /** FunnelMetricsRead */
         FunnelMetricsRead: {
@@ -437,8 +557,17 @@ export interface components {
         };
         /** IndexerPollRead */
         IndexerPollRead: {
+            /** Indexed Through */
+            indexed_through: number;
             /** Latest Block */
             latest_block: number;
+        };
+        /** IndexerSyncRequest */
+        IndexerSyncRequest: {
+            /** Receipt Block */
+            receipt_block: number;
+            /** Transaction Hash */
+            transaction_hash: string;
         };
         /** JobPrepareRead */
         JobPrepareRead: {
@@ -549,8 +678,6 @@ export interface components {
         };
         /** SwipeCreateRequest */
         SwipeCreateRequest: {
-            /** Actor Wallet */
-            actor_wallet: string;
             /** Context */
             context?: {
                 [key: string]: unknown;
@@ -656,6 +783,72 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    auth_challenge_auth_challenge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthChallengeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_verify_auth_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthTokenRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_disputes_disputes_get: {
         parameters: {
             query?: never;
@@ -760,7 +953,7 @@ export interface operations {
             };
         };
     };
-    health_health_get: {
+    health_compatibility_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -782,7 +975,7 @@ export interface operations {
             };
         };
     };
-    poll_indexer_indexer_poll_post: {
+    health_live_health_live_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -797,7 +990,95 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    health_ready_health_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | number;
+                    };
+                };
+            };
+        };
+    };
+    reconcile_indexer_indexer_reconcile_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Indexer-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["IndexerPollRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_indexer_indexer_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IndexerSyncRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexerPollRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -971,7 +1252,9 @@ export interface operations {
     refresh_all_reputations_reputation_refresh_all_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Indexer-Token"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -984,6 +1267,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReputationRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

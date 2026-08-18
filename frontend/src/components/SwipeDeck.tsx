@@ -16,15 +16,15 @@ export function SwipeDeck({ job, index, total, onSkip, onMatch }: SwipeDeckProps
       <div className="job-art min-h-[190px] p-5 sm:min-h-[240px] sm:p-7">
         <div className="relative z-10 flex items-start justify-between gap-4">
           <span className="rounded-md bg-white px-2.5 py-1.5 text-xs font-extrabold text-ink shadow-sm">
-            {job.matchScore}% compatível
+            Indexed testnet contract
           </span>
           <span className="rounded-md border border-white/15 bg-ink/70 px-2.5 py-1.5 text-xs font-bold text-white backdrop-blur">
-            {index + 1} de {total}
+            {index + 1} of {total}
           </span>
         </div>
         <div className="absolute bottom-5 left-5 z-10 sm:bottom-7 sm:left-7">
-          <p className="text-xs font-bold uppercase text-white/60">Projeto verificado</p>
-          <p className="mt-1 max-w-[210px] text-sm font-semibold text-white">Escrow em USDC na rede Base</p>
+          <p className="text-xs font-bold uppercase text-white/60">On-chain state verified</p>
+          <p className="mt-1 max-w-[210px] text-sm font-semibold text-white">Test USDC escrow on Base Sepolia</p>
         </div>
       </div>
 
@@ -38,18 +38,18 @@ export function SwipeDeck({ job, index, total, onSkip, onMatch }: SwipeDeckProps
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3">
-          <JobFact icon={Coins} label="Orçamento" value={job.budget} />
-          <JobFact icon={Clock3} label="Entregas" value={job.duration} />
+          <JobFact icon={Coins} label="Testnet budget" value={job.budget} />
+          <JobFact icon={Clock3} label="Deliveries" value={job.duration} />
           <JobFact icon={Check} label="Status" value={formatState(job.escrowState)} fullWidth />
         </div>
 
         <div className="mt-6 flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
           <button className="btn-ghost sm:min-w-32" type="button" onClick={onSkip}>
             <X className="h-4 w-4 text-coral" aria-hidden="true" />
-            Agora não
+            Skip
           </button>
           <button className="btn-primary sm:min-w-52" type="button" onClick={onMatch}>
-            Tenho interesse
+            Save interest
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
@@ -68,6 +68,4 @@ function JobFact({ icon: Icon, label, value, fullWidth = false }: { icon: typeof
   );
 }
 
-function formatState(state: MarketplaceJob["escrowState"]): string {
-  return ({ Created: "Criado", Funded: "Financiado", InProgress: "Em andamento", Completed: "Concluído", Cancelled: "Cancelado", Disputed: "Em disputa", Resolved: "Resolvido" })[state];
-}
+function formatState(state: MarketplaceJob["escrowState"]): string { return state; }

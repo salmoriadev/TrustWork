@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -193,11 +194,10 @@ class EvidenceFile(Base):
     )
     dispute_id: Mapped[UUID | None] = mapped_column(ForeignKey("disputes.id", ondelete="SET NULL"))
     uploader_wallet: Mapped[str] = mapped_column(String(42))
-    storage_uri: Mapped[str] = mapped_column(Text)
-    sha256_hash: Mapped[str] = mapped_column(String(64))
-    content_type: Mapped[str | None] = mapped_column(Text)
-    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
-    visibility: Mapped[str] = mapped_column(String(32), default="private")
+    file_name: Mapped[str] = mapped_column(String(180))
+    sha256_hash: Mapped[str] = mapped_column(String(66))
+    content_type: Mapped[str] = mapped_column(String(255))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -220,6 +220,7 @@ class IndexedEvent(Base):
     chain_id: Mapped[int] = mapped_column(BigInteger)
     contract_address: Mapped[str] = mapped_column(String(42))
     block_number: Mapped[int] = mapped_column(BigInteger)
+    block_hash: Mapped[str] = mapped_column(String(66))
     tx_hash: Mapped[str] = mapped_column(String(66))
     log_index: Mapped[int] = mapped_column(BigInteger)
     event_name: Mapped[str] = mapped_column(String(80))
@@ -227,6 +228,37 @@ class IndexedEvent(Base):
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class IndexerCursor(Base):
+    __tablename__ = "indexer_cursors"
+
+    chain_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    contract_address: Mapped[str] = mapped_column(String(42), primary_key=True)
+    last_finalized_block: Mapped[int] = mapped_column(BigInteger, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class AuthChallenge(Base):
+    __tablename__ = "auth_challenges"
+    __table_args__ = (
+        UniqueConstraint("nonce_hash", name="uq_auth_challenges_nonce_hash"),
+        Index("ix_auth_challenges_wallet_expiry", "wallet_address", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    wallet_address: Mapped[str] = mapped_column(String(42))
+    chain_id: Mapped[int] = mapped_column(BigInteger)
+    nonce_hash: Mapped[str] = mapped_column(String(64))
+    message_hash: Mapped[str] = mapped_column(String(64))
+    domain: Mapped[str] = mapped_column(String(255))
+    origin: Mapped[str] = mapped_column(String(512))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class UserReputationSnapshot(Base):

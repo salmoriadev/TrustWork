@@ -34,6 +34,11 @@ def apply_event(
                     status=JobStatus.created,
                 )
             )
+        else:
+            job.client_wallet = payload["client"].lower()
+            job.freelancer_wallet = payload["freelancer"].lower()
+            job.token_address = payload["token"].lower()
+            job.total_amount_raw = _decimal(payload["totalAmount"])
         return
 
     if event_name == "MilestoneCreated":

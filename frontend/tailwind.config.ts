@@ -9,7 +9,7 @@ export default {
         muted: "#68706B",
         app: "#F4F5F2",
         landing: "#F7F4EC",
-        "landing-muted": "#5E655F",
+        "landing-muted": "#505752",
         line: "#DDE0DC",
         trust: "#28A98B",
         "trust-deep": "#08755F",
@@ -19,7 +19,7 @@ export default {
         "chain-soft": "#EDF2FF",
         coral: "#DC4B3F",
         "coral-soft": "#FFF0ED",
-        gold: "#A46706"
+        gold: "#794B00"
       },
       boxShadow: {
         panel: "0 18px 45px rgba(17, 24, 39, 0.08)",

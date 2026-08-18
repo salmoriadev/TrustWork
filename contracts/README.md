@@ -1,65 +1,36 @@
-# Smart Contracts
+# TrustWork escrow contracts
 
-Foundry project for the USDC escrow contract.
+Foundry project for TrustWork's milestone-based test USDC escrow. The contract supports funding, delivery proofs, approval, revisions, disputes, timeouts, mutual cancellation, pausing, amount caps, and role-based administration.
 
-## Install
-
-```bash
-forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts
-```
-
-## Test
+## Install and test
 
 ```bash
+forge install
+forge fmt --check
 forge test
+uvx --from slither-analyzer==0.11.5 slither . --exclude-dependencies --fail-high
 ```
 
-## Run locally with Anvil
+The test suite includes unit, fuzz, and invariant coverage. The portfolio deployment remains an unaudited Base Sepolia demo and must not be used with assets of value.
 
-Anvil is the local Ethereum node included with Foundry. It plays the same role Ganache used to play for many Solidity projects.
+## Local deployment
 
-Terminal 1:
+The repository-level `./demo.sh` starts Anvil, obtains an ephemeral development key from its temporary configuration, deploys `MockUSDC` and `FreelanceEscrow`, creates a labeled local job, migrates PostgreSQL, and starts the API and frontend.
 
-```bash
-anvil
-```
-
-Terminal 2:
+To deploy the contracts manually, start Anvil and supply an ephemeral Anvil account through environment variables:
 
 ```bash
-cd contracts
+PRIVATE_KEY="<ephemeral-anvil-key>" \
 forge script script/DeployLocal.s.sol:DeployLocal \
   --rpc-url http://127.0.0.1:8545 \
   --broadcast
 ```
 
-The local script deploys:
+Never reuse a local development key on a public network.
 
-- `MockUSDC`, an ERC-20 with 6 decimals.
-- `FreelanceEscrow`, configured to accept that mock USDC.
-- An initial `1,000,000 USDC` mint to the default Anvil deployer account.
+## Base Sepolia deployment
 
-Default local deployer private key:
-
-```text
-ANVIL_DEVELOPMENT_KEY_REMOVED
-```
-
-After deploy, copy the printed addresses into the root `.env`:
-
-```env
-CHAIN_ID=31337
-RPC_URL=http://127.0.0.1:8545
-ESCROW_CONTRACT_ADDRESS=0x...
-USDC_CONTRACT_ADDRESS=0x...
-VITE_CHAIN_ID=31337
-VITE_ESCROW_CONTRACT_ADDRESS=0x...
-VITE_USDC_CONTRACT_ADDRESS=0x...
-```
-
-## Deploy
-
-Set the variables from `../.env.example`, then:
+Use a dedicated, minimally funded deployer and the official Base Sepolia USDC address recorded in the root environment template:
 
 ```bash
 forge script script/DeployFreelanceEscrow.s.sol:DeployFreelanceEscrow \
@@ -68,4 +39,4 @@ forge script script/DeployFreelanceEscrow.s.sol:DeployFreelanceEscrow \
   --verify
 ```
 
-For production, deploy with the official USDC contract for Base Mainnet and verify the address from Circle/Base documentation before broadcasting.
+The private key belongs only in the operator's secret store. Record the escrow address, deployment block, transaction hash, verified source URL, token address, and exact commit before configuring the API. Follow the [deployment runbook](../docs/deployment.md); mainnet deployment is outside this release.

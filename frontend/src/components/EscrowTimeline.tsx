@@ -22,14 +22,14 @@ export function EscrowTimeline({ job }: { job: MarketplaceJob }) {
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           <p className="eyebrow">Escrow</p>
-          <h2 className="mt-2 text-lg font-extrabold text-ink">Milestones on-chain</h2>
+          <h2 className="mt-2 text-lg font-extrabold text-ink">On-chain milestones</h2>
         </div>
         <span className="tag tag-chain">{formatEscrowState(job.escrowState)}</span>
       </div>
 
       <div className="relative">
         {job.milestones.length === 0 && (
-          <p className="text-sm text-muted">Nenhum milestone encontrado.</p>
+          <p className="text-sm text-muted">No milestones were indexed.</p>
         )}
 
         {job.milestones.map((milestone, i) => {

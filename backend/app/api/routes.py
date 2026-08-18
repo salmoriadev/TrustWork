@@ -1,9 +1,11 @@
-import hashlib
+import logging
+import secrets
 from decimal import Decimal
 from time import time_ns
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, selectinload
 from web3 import Web3
 
@@ -21,12 +23,17 @@ from app.models import (
     UserReputationSnapshot,
 )
 from app.schemas import (
+    AuthChallengeRead,
+    AuthChallengeRequest,
+    AuthTokenRead,
+    AuthVerifyRequest,
     DisputeRead,
     EscrowConfigRead,
     EvidenceCreateRequest,
     EvidenceRead,
     FunnelMetricsRead,
     IndexerPollRead,
+    IndexerSyncRequest,
     JobPrepareRead,
     JobPrepareRequest,
     JobRead,
@@ -37,15 +44,76 @@ from app.schemas import (
     UserRead,
     UserUpsertRequest,
 )
+from app.services.auth import (
+    AuthenticatedWallet,
+    authenticated_wallet,
+    create_challenge,
+    validate_request_origin,
+    verify_challenge,
+)
 from app.services.event_indexer import EscrowEventIndexer
 from app.services.reputation import refresh_all_reputation_snapshots, refresh_reputation_snapshot
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+@router.get("/health/live")
+def health_live() -> dict[str, str]:
+    return {"status": "ok"}
 
 
 @router.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health_compatibility() -> dict[str, str]:
+    return health_live()
+
+
+@router.get("/health/ready")
+def health_ready(db: Session = Depends(get_db)) -> dict[str, str | int]:
+    checks: dict[str, str | int] = {"database": "unavailable", "rpc": "unavailable"}
+    try:
+        db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+        EscrowEventIndexer.validate_abi()
+        web3 = Web3(Web3.HTTPProvider(settings.rpc_url, request_kwargs={"timeout": 5}))
+        rpc_chain_id = web3.eth.chain_id
+        if rpc_chain_id != settings.chain_id:
+            raise RuntimeError(f"RPC chain ID {rpc_chain_id} does not match {settings.chain_id}")
+        code = web3.eth.get_code(Web3.to_checksum_address(settings.escrow_contract_address))
+        if not code:
+            raise RuntimeError("Configured escrow address has no bytecode")
+        checks.update({"rpc": "ok", "chain_id": rpc_chain_id, "bytecode": "ok", "abi": "ok"})
+    except Exception as exc:
+        logger.warning("Readiness check failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail=checks) from exc
+    return {"status": "ready", **checks}
+
+
+@router.post("/auth/challenge", response_model=AuthChallengeRead)
+def auth_challenge(
+    payload: AuthChallengeRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> AuthChallengeRead:
+    validate_request_origin(request)
+    message, nonce, expires_at = create_challenge(db, payload.wallet_address, payload.chain_id)
+    return AuthChallengeRead(message=message, nonce=nonce, expires_at=expires_at)
+
+
+@router.post("/auth/verify", response_model=AuthTokenRead)
+def auth_verify(
+    payload: AuthVerifyRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> AuthTokenRead:
+    validate_request_origin(request)
+    token, wallet, expires_at, chain_id = verify_challenge(db, payload.message, payload.signature)
+    return AuthTokenRead(
+        access_token=token,
+        expires_at=expires_at,
+        wallet_address=wallet,
+        chain_id=chain_id,
+    )
 
 
 @router.get("/escrow/config", response_model=EscrowConfigRead)
@@ -72,12 +140,14 @@ def get_user(wallet_address: str, db: Session = Depends(get_db)) -> User:
 def upsert_user(
     wallet_address: str,
     payload: UserUpsertRequest,
+    actor: Annotated[AuthenticatedWallet, Depends(authenticated_wallet)],
     db: Session = Depends(get_db),
 ) -> User:
     if not _looks_like_address(wallet_address):
         raise HTTPException(status_code=422, detail="Invalid wallet")
 
     wallet = wallet_address.lower()
+    _enforce_actor(actor, wallet)
     user = db.execute(select(User).where(User.wallet_address == wallet)).scalar_one_or_none()
     if user is None:
         user = User(wallet_address=wallet)
@@ -92,7 +162,10 @@ def upsert_user(
 
 
 @router.post("/jobs/prepare", response_model=JobPrepareRead)
-def prepare_job(payload: JobPrepareRequest) -> JobPrepareRead:
+def prepare_job(
+    payload: JobPrepareRequest,
+    _actor: Annotated[AuthenticatedWallet, Depends(authenticated_wallet)],
+) -> JobPrepareRead:
     if not _looks_like_address(payload.freelancer_wallet):
         raise HTTPException(status_code=422, detail="Invalid freelancer wallet")
     try:
@@ -121,24 +194,47 @@ def prepare_job(payload: JobPrepareRequest) -> JobPrepareRead:
     )
 
 
-@router.post("/indexer/poll", response_model=IndexerPollRead)
-def poll_indexer() -> IndexerPollRead:
+@router.post("/indexer/sync", response_model=IndexerPollRead)
+def sync_indexer(
+    payload: IndexerSyncRequest,
+    _actor: Annotated[AuthenticatedWallet, Depends(authenticated_wallet)],
+) -> IndexerPollRead:
     indexer = EscrowEventIndexer()
-    latest_block = indexer.web3.eth.block_number
-    indexer.poll_range(settings.indexer_start_block, latest_block)
-    return IndexerPollRead(latest_block=latest_block)
+    try:
+        indexed_through = indexer.sync_receipt(payload.transaction_hash, payload.receipt_block)
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return IndexerPollRead(
+        latest_block=indexer.web3.eth.block_number,
+        indexed_through=indexed_through,
+    )
+
+
+@router.post("/indexer/reconcile", response_model=IndexerPollRead)
+def reconcile_indexer(
+    indexer_token: Annotated[str | None, Header(alias="X-Indexer-Token")] = None,
+) -> IndexerPollRead:
+    if not indexer_token or not secrets.compare_digest(indexer_token, settings.indexer_token):
+        raise HTTPException(status_code=401, detail="Invalid indexer token")
+    indexer = EscrowEventIndexer()
+    indexed_through = indexer.poll_confirmed()
+    return IndexerPollRead(
+        latest_block=indexer.web3.eth.block_number,
+        indexed_through=indexed_through,
+    )
 
 
 @router.post("/swipes", response_model=SwipeRead)
-def create_swipe(payload: SwipeCreateRequest, db: Session = Depends(get_db)) -> SwipeAction:
-    if not _looks_like_address(payload.actor_wallet):
-        raise HTTPException(status_code=422, detail="Invalid actor wallet")
-
+def create_swipe(
+    payload: SwipeCreateRequest,
+    actor: Annotated[AuthenticatedWallet, Depends(authenticated_wallet)],
+    db: Session = Depends(get_db),
+) -> SwipeAction:
     if payload.target_type == "job" and db.get(Job, payload.target_id) is None:
         raise HTTPException(status_code=404, detail="Target job not found")
 
     swipe = SwipeAction(
-        actor_wallet=payload.actor_wallet.lower(),
+        actor_wallet=actor.address,
         target_type=payload.target_type,
         target_id=payload.target_id,
         direction=payload.direction,
@@ -151,8 +247,13 @@ def create_swipe(payload: SwipeCreateRequest, db: Session = Depends(get_db)) -> 
 
 
 @router.get("/matches/{wallet_address}", response_model=list[MatchRead])
-def list_matches(wallet_address: str, db: Session = Depends(get_db)) -> list[MatchRead]:
+def list_matches(
+    wallet_address: str,
+    actor: Annotated[AuthenticatedWallet, Depends(authenticated_wallet)],
+    db: Session = Depends(get_db),
+) -> list[MatchRead]:
     wallet = wallet_address.lower()
+    _enforce_actor(actor, wallet)
     stmt = (
         select(SwipeAction, Job)
         .join(Job, Job.id == SwipeAction.target_id)
@@ -171,30 +272,33 @@ def list_matches(wallet_address: str, db: Session = Depends(get_db)) -> list[Mat
 @router.post("/evidence", response_model=EvidenceRead)
 def create_evidence(
     payload: EvidenceCreateRequest,
+    actor: Annotated[AuthenticatedWallet, Depends(authenticated_wallet)],
     db: Session = Depends(get_db),
 ) -> EvidenceFile:
-    if not _looks_like_address(payload.uploader_wallet):
-        raise HTTPException(status_code=422, detail="Invalid uploader wallet")
-    if db.get(Job, payload.job_id) is None:
+    job = db.get(Job, payload.job_id)
+    if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    if payload.milestone_id and db.get(Milestone, payload.milestone_id) is None:
-        raise HTTPException(status_code=404, detail="Milestone not found")
-    if payload.dispute_id and db.get(Dispute, payload.dispute_id) is None:
-        raise HTTPException(status_code=404, detail="Dispute not found")
+    if actor.address not in {job.client_wallet.lower(), job.freelancer_wallet.lower()}:
+        raise HTTPException(status_code=403, detail="Only job participants can register evidence")
+    if payload.milestone_id:
+        milestone = db.get(Milestone, payload.milestone_id)
+        if milestone is None or milestone.job_id != job.id:
+            raise HTTPException(status_code=404, detail="Milestone not found for this job")
+    if payload.dispute_id:
+        dispute = db.get(Dispute, payload.dispute_id)
+        if dispute is None or dispute.job_id != job.id:
+            raise HTTPException(status_code=404, detail="Dispute not found for this job")
 
-    body_bytes = payload.body.encode("utf-8")
-    sha256_hash = hashlib.sha256(body_bytes).hexdigest()
-    safe_name = payload.file_name.replace("/", "_").replace("\\", "_")
+    safe_name = payload.file_name.replace("/", "_").replace("\\", "_").strip()
     evidence = EvidenceFile(
         job_id=payload.job_id,
         milestone_id=payload.milestone_id,
         dispute_id=payload.dispute_id,
-        uploader_wallet=payload.uploader_wallet.lower(),
-        storage_uri=f"local://evidence/{sha256_hash}/{safe_name}",
-        sha256_hash=sha256_hash,
+        uploader_wallet=actor.address,
+        file_name=safe_name,
+        sha256_hash=payload.digest.lower(),
         content_type=payload.content_type,
-        size_bytes=len(body_bytes),
-        visibility=payload.visibility,
+        size_bytes=payload.size_bytes,
     )
     db.add(evidence)
     db.commit()
@@ -233,10 +337,7 @@ def list_dispute_evidence(dispute_id: str, db: Session = Depends(get_db)) -> lis
 @router.get("/jobs", response_model=list[JobRead])
 def list_jobs(db: Session = Depends(get_db)) -> list[Job]:
     stmt = (
-        select(Job)
-        .options(selectinload(Job.milestones))
-        .order_by(Job.created_at.desc())
-        .limit(25)
+        select(Job).options(selectinload(Job.milestones)).order_by(Job.created_at.desc()).limit(25)
     )
     return list(db.execute(stmt).scalars().all())
 
@@ -281,10 +382,15 @@ def get_reputation(wallet_address: str, db: Session = Depends(get_db)) -> Reputa
 
 
 @router.post("/reputation/{wallet_address}/refresh", response_model=ReputationRead)
-def refresh_reputation(wallet_address: str, db: Session = Depends(get_db)) -> ReputationRead:
+def refresh_reputation(
+    wallet_address: str,
+    actor: Annotated[AuthenticatedWallet, Depends(authenticated_wallet)],
+    db: Session = Depends(get_db),
+) -> ReputationRead:
     if not _looks_like_address(wallet_address):
         raise HTTPException(status_code=422, detail="Invalid wallet")
-    snapshot = refresh_reputation_snapshot(db, wallet_address)
+    _enforce_actor(actor, wallet_address)
+    snapshot = refresh_reputation_snapshot(db, actor.address)
     return ReputationRead(
         wallet_address=snapshot.wallet_address,
         completed_jobs=snapshot.completed_jobs,
@@ -297,7 +403,12 @@ def refresh_reputation(wallet_address: str, db: Session = Depends(get_db)) -> Re
 
 
 @router.post("/reputation/refresh-all", response_model=list[ReputationRead])
-def refresh_all_reputations(db: Session = Depends(get_db)) -> list[ReputationRead]:
+def refresh_all_reputations(
+    indexer_token: Annotated[str | None, Header(alias="X-Indexer-Token")] = None,
+    db: Session = Depends(get_db),
+) -> list[ReputationRead]:
+    if not indexer_token or not secrets.compare_digest(indexer_token, settings.indexer_token):
+        raise HTTPException(status_code=401, detail="Invalid indexer token")
     snapshots = refresh_all_reputation_snapshots(db)
     return [
         ReputationRead(
@@ -325,14 +436,10 @@ def funnel_metrics(db: Session = Depends(get_db)) -> FunnelMetricsRead:
         select(func.count(Job.id)).where(Job.status != JobStatus.created)
     ).scalar_one()
     jobs_funded = db.execute(
-        select(func.count(Job.id)).where(
-            Job.status.in_([JobStatus.funded, JobStatus.in_progress])
-        )
+        select(func.count(Job.id)).where(Job.status.in_([JobStatus.funded, JobStatus.in_progress]))
     ).scalar_one()
     jobs_completed = db.execute(
-        select(func.count(Job.id)).where(
-            Job.status.in_([JobStatus.completed, JobStatus.resolved])
-        )
+        select(func.count(Job.id)).where(Job.status.in_([JobStatus.completed, JobStatus.resolved]))
     ).scalar_one()
     jobs_disputed = db.execute(
         select(func.count(Job.id)).where(Job.status == JobStatus.disputed)
@@ -357,6 +464,11 @@ def funnel_metrics(db: Session = Depends(get_db)) -> FunnelMetricsRead:
 
 def _looks_like_address(value: str) -> bool:
     return Web3.is_address(value)
+
+
+def _enforce_actor(actor: AuthenticatedWallet, wallet_address: str) -> None:
+    if actor.address != wallet_address.lower():
+        raise HTTPException(status_code=403, detail="Authenticated wallet does not match actor")
 
 
 def _uuid_or_404(value: str, detail: str):

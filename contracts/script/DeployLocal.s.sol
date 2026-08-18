@@ -6,13 +6,10 @@ import { FreelanceEscrow } from "../src/FreelanceEscrow.sol";
 import { MockUSDC } from "../src/MockUSDC.sol";
 
 contract DeployLocal is Script {
-    uint256 private constant DEFAULT_ANVIL_PRIVATE_KEY =
-        ANVIL_DEVELOPMENT_KEY_REMOVED;
-
     uint256 private constant INITIAL_MINT = 1_000_000e6;
 
     function run() external returns (MockUSDC usdc, FreelanceEscrow escrow) {
-        uint256 deployerPrivateKey = vm.envOr("PRIVATE_KEY", DEFAULT_ANVIL_PRIVATE_KEY);
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
         address admin = vm.envOr("ESCROW_ADMIN", deployer);

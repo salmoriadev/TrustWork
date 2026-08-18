@@ -1,6 +1,107 @@
 {
   "components": {
     "schemas": {
+      "AuthChallengeRead": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "nonce": {
+            "title": "Nonce",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "nonce",
+          "expires_at"
+        ],
+        "title": "AuthChallengeRead",
+        "type": "object"
+      },
+      "AuthChallengeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_id": {
+            "title": "Chain Id",
+            "type": "integer"
+          },
+          "wallet_address": {
+            "maxLength": 42,
+            "minLength": 42,
+            "title": "Wallet Address",
+            "type": "string"
+          }
+        },
+        "required": [
+          "wallet_address",
+          "chain_id"
+        ],
+        "title": "AuthChallengeRequest",
+        "type": "object"
+      },
+      "AuthTokenRead": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "chain_id": {
+            "title": "Chain Id",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          },
+          "wallet_address": {
+            "title": "Wallet Address",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_at",
+          "wallet_address",
+          "chain_id"
+        ],
+        "title": "AuthTokenRead",
+        "type": "object"
+      },
+      "AuthVerifyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "maxLength": 4096,
+            "minLength": 80,
+            "title": "Message",
+            "type": "string"
+          },
+          "signature": {
+            "pattern": "^0x[0-9a-fA-F]{130}$",
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "signature"
+        ],
+        "title": "AuthVerifyRequest",
+        "type": "object"
+      },
       "DisputeRead": {
         "properties": {
           "arbitrator_wallet": {
@@ -120,15 +221,18 @@
         "type": "object"
       },
       "EvidenceCreateRequest": {
+        "additionalProperties": false,
         "properties": {
-          "body": {
+          "content_type": {
+            "default": "application/octet-stream",
+            "maxLength": 255,
             "minLength": 1,
-            "title": "Body",
+            "title": "Content Type",
             "type": "string"
           },
-          "content_type": {
-            "default": "text/plain",
-            "title": "Content Type",
+          "digest": {
+            "pattern": "^0x[0-9a-fA-F]{64}$",
+            "title": "Digest",
             "type": "string"
           },
           "dispute_id": {
@@ -144,8 +248,8 @@
             "title": "Dispute Id"
           },
           "file_name": {
-            "default": "evidence.txt",
             "maxLength": 180,
+            "minLength": 1,
             "title": "File Name",
             "type": "string"
           },
@@ -166,23 +270,18 @@
             ],
             "title": "Milestone Id"
           },
-          "uploader_wallet": {
-            "maxLength": 42,
-            "minLength": 42,
-            "title": "Uploader Wallet",
-            "type": "string"
-          },
-          "visibility": {
-            "default": "private",
-            "pattern": "^(private|participants|arbitrator)$",
-            "title": "Visibility",
-            "type": "string"
+          "size_bytes": {
+            "maximum": 25000000.0,
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
           }
         },
         "required": [
           "job_id",
-          "uploader_wallet",
-          "body"
+          "digest",
+          "file_name",
+          "size_bytes"
         ],
         "title": "EvidenceCreateRequest",
         "type": "object"
@@ -190,15 +289,8 @@
       "EvidenceRead": {
         "properties": {
           "content_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content Type"
+            "title": "Content Type",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -216,6 +308,10 @@
               }
             ],
             "title": "Dispute Id"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
           },
           "id": {
             "format": "uuid",
@@ -244,26 +340,11 @@
             "type": "string"
           },
           "size_bytes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Size Bytes"
-          },
-          "storage_uri": {
-            "title": "Storage Uri",
-            "type": "string"
+            "title": "Size Bytes",
+            "type": "integer"
           },
           "uploader_wallet": {
             "title": "Uploader Wallet",
-            "type": "string"
-          },
-          "visibility": {
-            "title": "Visibility",
             "type": "string"
           }
         },
@@ -273,11 +354,10 @@
           "milestone_id",
           "dispute_id",
           "uploader_wallet",
-          "storage_uri",
+          "file_name",
           "sha256_hash",
           "content_type",
           "size_bytes",
-          "visibility",
           "created_at"
         ],
         "title": "EvidenceRead",
@@ -346,15 +426,41 @@
       },
       "IndexerPollRead": {
         "properties": {
+          "indexed_through": {
+            "title": "Indexed Through",
+            "type": "integer"
+          },
           "latest_block": {
             "title": "Latest Block",
             "type": "integer"
           }
         },
         "required": [
-          "latest_block"
+          "latest_block",
+          "indexed_through"
         ],
         "title": "IndexerPollRead",
+        "type": "object"
+      },
+      "IndexerSyncRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "receipt_block": {
+            "minimum": 0.0,
+            "title": "Receipt Block",
+            "type": "integer"
+          },
+          "transaction_hash": {
+            "pattern": "^0x[0-9a-fA-F]{64}$",
+            "title": "Transaction Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_hash",
+          "receipt_block"
+        ],
+        "title": "IndexerSyncRequest",
         "type": "object"
       },
       "JobPrepareRead": {
@@ -410,6 +516,7 @@
         "type": "object"
       },
       "JobPrepareRequest": {
+        "additionalProperties": false,
         "properties": {
           "freelancer_wallet": {
             "maxLength": 42,
@@ -695,13 +802,8 @@
         "type": "object"
       },
       "SwipeCreateRequest": {
+        "additionalProperties": false,
         "properties": {
-          "actor_wallet": {
-            "maxLength": 42,
-            "minLength": 42,
-            "title": "Actor Wallet",
-            "type": "string"
-          },
           "context": {
             "additionalProperties": true,
             "title": "Context",
@@ -724,7 +826,6 @@
           }
         },
         "required": [
-          "actor_wallet",
           "target_type",
           "target_id",
           "direction"
@@ -840,6 +941,7 @@
         "type": "object"
       },
       "UserUpsertRequest": {
+        "additionalProperties": false,
         "properties": {
           "display_name": {
             "anyOf": [
@@ -855,7 +957,7 @@
           },
           "profile_visibility": {
             "default": "public",
-            "pattern": "^(public|private)$",
+            "pattern": "^public$",
             "title": "Profile Visibility",
             "type": "string"
           },
@@ -916,15 +1018,97 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
-    "description": "Off-chain API and event projection layer for the escrow marketplace.",
-    "title": "Freelance Escrow API",
+    "description": "Off-chain metadata, wallet authentication, and Base Sepolia event projection.",
+    "title": "TrustWork API",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/auth/challenge": {
+      "post": {
+        "operationId": "auth_challenge_auth_challenge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthChallengeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Auth Challenge"
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "operationId": "auth_verify_auth_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Auth Verify"
+      }
+    },
     "/disputes": {
       "get": {
         "operationId": "list_disputes_disputes_get",
@@ -1043,12 +1227,17 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create Evidence"
       }
     },
     "/health": {
       "get": {
-        "operationId": "health_health_get",
+        "operationId": "health_compatibility_health_get",
         "responses": {
           "200": {
             "content": {
@@ -1057,7 +1246,7 @@
                   "additionalProperties": {
                     "type": "string"
                   },
-                  "title": "Response Health Health Get",
+                  "title": "Response Health Compatibility Health Get",
                   "type": "object"
                 }
               }
@@ -1065,12 +1254,81 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Health"
+        "summary": "Health Compatibility"
       }
     },
-    "/indexer/poll": {
+    "/health/live": {
+      "get": {
+        "operationId": "health_live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Live Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Live"
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "health_ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  },
+                  "title": "Response Health Ready Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Ready"
+      }
+    },
+    "/indexer/reconcile": {
       "post": {
-        "operationId": "poll_indexer_indexer_poll_post",
+        "operationId": "reconcile_indexer_indexer_reconcile_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Indexer-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Indexer-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -1081,9 +1339,62 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Poll Indexer"
+        "summary": "Reconcile Indexer"
+      }
+    },
+    "/indexer/sync": {
+      "post": {
+        "operationId": "sync_indexer_indexer_sync_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndexerSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexerPollRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync Indexer"
       }
     },
     "/jobs": {
@@ -1143,6 +1454,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Prepare Job"
       }
     },
@@ -1268,6 +1584,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List Matches"
       }
     },
@@ -1292,6 +1613,24 @@
     "/reputation/refresh-all": {
       "post": {
         "operationId": "refresh_all_reputations_reputation_refresh_all_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Indexer-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Indexer-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -1306,6 +1645,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Refresh All Reputations"
@@ -1386,6 +1735,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Refresh Reputation"
       }
     },
@@ -1424,6 +1778,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create Swipe"
       }
     },
@@ -1510,6 +1869,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Upsert User"
       }
     }

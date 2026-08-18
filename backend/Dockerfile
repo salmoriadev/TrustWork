@@ -8,8 +8,10 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir uv==0.11.26
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY app/ app/
+COPY migrations/ migrations/
+COPY alembic.ini ./
 RUN uv sync --locked --no-dev --no-editable
 
 FROM python:3.12-alpine@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df AS runtime
@@ -24,12 +26,15 @@ RUN addgroup --system app && \
     adduser --system --ingroup app --home /app --shell /sbin/nologin app
 
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
+COPY --from=builder --chown=app:app /app/app /app/app
+COPY --from=builder --chown=app:app /app/migrations /app/migrations
+COPY --from=builder --chown=app:app /app/alembic.ini /app/alembic.ini
 
 USER app
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3)"]
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -13,7 +13,8 @@ npm run lint --prefix "$ROOT/frontend"
 npm test --prefix "$ROOT/frontend"
 npm run build --prefix "$ROOT/frontend"
 VITE_API_BASE_URL=https://api.trustwork.example \
-VITE_CHAIN_ID=8453 \
+VITE_RPC_URL=https://sepolia.base.org \
+VITE_CHAIN_ID=84532 \
 VITE_ESCROW_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000001 \
 VITE_USDC_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000002 \
 VITE_WALLETCONNECT_PROJECT_ID=local-production-check \
@@ -24,6 +25,8 @@ if grep -R -E "Northstar Labs|Checkout USDC para SaaS" "$ROOT/frontend/dist"; th
   exit 1
 fi
 npm audit --prefix "$ROOT/frontend" --omit=dev --audit-level=high
+npm run test:e2e --prefix "$ROOT/frontend"
+npm run lighthouse --prefix "$ROOT/frontend"
 forge fmt --check --root "$ROOT/contracts"
 forge test --root "$ROOT/contracts"
 

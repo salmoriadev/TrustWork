@@ -15,19 +15,19 @@ describe("shared formatters", () => {
     expect(formatAddress("not-an-address")).toBe("not-an-address");
   });
 
-  it("formata BPS e limita a largura visual", () => {
-    expect(formatBps(8_700)).toBe("87,0%");
+  it("formats BPS and limits the visual width", () => {
+    expect(formatBps(8_700)).toBe("87.0%");
     expect(bpsToPercent(12_000)).toBe(100);
     expect(() => formatBps(10_001)).toThrow("BPS");
   });
 
-  it("formata datas validas e trata entrada invalida", () => {
-    expect(formatDateTime("invalid")).toBe("Data indisponivel");
+  it("formats valid dates and handles invalid input", () => {
+    expect(formatDateTime("invalid")).toBe("Date unavailable");
     expect(formatDateTime("2026-08-04T12:30:00Z", "en-US")).toContain("8/4/26");
   });
 
-  it("traduz estados on-chain de forma centralizada", () => {
-    expect(formatEscrowState("Funded")).toBe("Financiado");
-    expect(formatMilestoneState("RevisionRequested")).toBe("Revisao solicitada");
+  it("centralizes on-chain state labels", () => {
+    expect(formatEscrowState("Funded")).toBe("Funded");
+    expect(formatMilestoneState("RevisionRequested")).toBe("Revision requested");
   });
 });

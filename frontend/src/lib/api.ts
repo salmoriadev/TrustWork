@@ -3,6 +3,7 @@ import type { components } from "./api.generated";
 import { runtimeConfig } from "./config";
 import { formatUsdcRaw } from "./chainValues";
 import { formatAddress, formatDateTime } from "./formatters";
+import { signWalletMessage, type AuthenticatedWalletSession, type WalletSession } from "./wallet";
 
 type Schemas = components["schemas"];
 type GeneratedJob = Schemas["JobRead"];
@@ -16,6 +17,19 @@ export type UserProfile = Omit<Schemas["UserRead"], "role_preference"> & {
   role_preference: "client" | "freelancer" | "both" | null;
 };
 
+interface AuthChallenge {
+  message: string;
+  nonce: string;
+  expires_at: string;
+}
+
+interface AuthToken {
+  access_token: string;
+  expires_at: string;
+  wallet_address: string;
+  chain_id: number;
+}
+
 type ApiMilestone = Omit<GeneratedMilestone, "status"> & {
   status: MilestoneStatus;
 };
@@ -25,15 +39,36 @@ type ApiJob = Omit<GeneratedJob, "milestones" | "status"> & {
 };
 type MatchRead = Omit<Schemas["MatchRead"], "job"> & { job: ApiJob };
 
-export async function fetchMarketplaceJobs(): Promise<MarketplaceJob[]> {
+export async function fetchMarketplaceJobs(onWake?: () => void): Promise<MarketplaceJob[]> {
   const baseUrl = runtimeConfig.apiBaseUrl;
-  const response = await fetch(`${baseUrl}/jobs`);
+  const response = await fetchWithColdStartRetry(`${baseUrl}/jobs`, onWake);
   if (!response.ok) {
     throw new Error(`API returned ${response.status}`);
   }
 
   const jobs = (await response.json()) as ApiJob[];
   return jobs.map(toMarketplaceJob);
+}
+
+export async function authenticateWallet(
+  session: WalletSession
+): Promise<AuthenticatedWalletSession> {
+  const challengeResponse = await fetch(`${apiBaseUrl()}/auth/challenge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wallet_address: session.address, chain_id: session.chainId })
+  });
+  if (!challengeResponse.ok) throw new Error(`Authentication challenge failed (${challengeResponse.status}).`);
+  const challenge = (await challengeResponse.json()) as AuthChallenge;
+  const signature = await signWalletMessage(session, challenge.message);
+  const verifyResponse = await fetch(`${apiBaseUrl()}/auth/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: challenge.message, signature })
+  });
+  if (!verifyResponse.ok) throw new Error(`Wallet verification failed (${verifyResponse.status}).`);
+  const token = (await verifyResponse.json()) as AuthToken;
+  return { ...session, accessToken: token.access_token, expiresAt: token.expires_at };
 }
 
 export async function fetchEscrowConfig(): Promise<EscrowConfig> {
@@ -46,6 +81,7 @@ export async function fetchEscrowConfig(): Promise<EscrowConfig> {
 }
 
 export async function prepareJob(params: {
+  session: AuthenticatedWalletSession;
   freelancerWallet: string;
   milestoneAmountsRaw: string[];
   jobId?: string;
@@ -53,7 +89,7 @@ export async function prepareJob(params: {
   const baseUrl = apiBaseUrl();
   const response = await fetch(`${baseUrl}/jobs/prepare`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authorizedHeaders(params.session),
     body: JSON.stringify({
       freelancer_wallet: params.freelancerWallet,
       milestone_amounts_raw: params.milestoneAmountsRaw,
@@ -66,25 +102,36 @@ export async function prepareJob(params: {
   return (await response.json()) as PreparedJob;
 }
 
-export async function pollIndexer(): Promise<void> {
+export async function syncIndexer(
+  session: AuthenticatedWalletSession,
+  transactionHash: string,
+  receiptBlock: bigint
+): Promise<void> {
   const baseUrl = apiBaseUrl();
-  const response = await fetch(`${baseUrl}/indexer/poll`, { method: "POST" });
+  const response = await fetch(`${baseUrl}/indexer/sync`, {
+    method: "POST",
+    headers: authorizedHeaders(session),
+    body: JSON.stringify({
+      transaction_hash: transactionHash,
+      receipt_block: Number(receiptBlock)
+    })
+  });
   if (!response.ok) {
     throw new Error(`API returned ${response.status}`);
   }
 }
 
 export async function upsertUserProfile(params: {
-  walletAddress: string;
+  session: AuthenticatedWalletSession;
   displayName?: string;
   rolePreference?: "client" | "freelancer" | "both";
 }): Promise<UserProfile> {
   const baseUrl = apiBaseUrl();
-  const response = await fetch(`${baseUrl}/users/${params.walletAddress}`, {
+  const response = await fetch(`${baseUrl}/users/${params.session.address}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authorizedHeaders(params.session),
     body: JSON.stringify({
-      display_name: params.displayName ?? `User ${formatAddress(params.walletAddress)}`,
+      display_name: params.displayName ?? `User ${formatAddress(params.session.address)}`,
       role_preference: params.rolePreference ?? "both",
       profile_visibility: "public"
     })
@@ -96,7 +143,7 @@ export async function upsertUserProfile(params: {
 }
 
 export async function createSwipe(params: {
-  actorWallet: string;
+  session: AuthenticatedWalletSession;
   targetId: string;
   direction: "left" | "right" | "super";
   context?: Record<string, unknown>;
@@ -104,9 +151,8 @@ export async function createSwipe(params: {
   const baseUrl = apiBaseUrl();
   const response = await fetch(`${baseUrl}/swipes`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authorizedHeaders(params.session),
     body: JSON.stringify({
-      actor_wallet: params.actorWallet,
       target_type: "job",
       target_id: params.targetId,
       direction: params.direction,
@@ -118,9 +164,11 @@ export async function createSwipe(params: {
   }
 }
 
-export async function fetchMatches(walletAddress: string): Promise<MarketplaceJob[]> {
+export async function fetchMatches(session: AuthenticatedWalletSession): Promise<MarketplaceJob[]> {
   const baseUrl = apiBaseUrl();
-  const response = await fetch(`${baseUrl}/matches/${walletAddress}`);
+  const response = await fetch(`${baseUrl}/matches/${session.address}`, {
+    headers: authorizedHeaders(session, false)
+  });
   if (!response.ok) {
     throw new Error(`API returned ${response.status}`);
   }
@@ -129,26 +177,27 @@ export async function fetchMatches(walletAddress: string): Promise<MarketplaceJo
 }
 
 export async function createEvidence(params: {
+  session: AuthenticatedWalletSession;
   jobId: string;
-  uploaderWallet: string;
-  body: string;
-  fileName?: string;
+  digest: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
   milestoneId?: string;
   disputeId?: string;
 }): Promise<EvidenceRead> {
   const baseUrl = apiBaseUrl();
   const response = await fetch(`${baseUrl}/evidence`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authorizedHeaders(params.session),
     body: JSON.stringify({
       job_id: params.jobId,
-      uploader_wallet: params.uploaderWallet,
-      body: params.body,
-      file_name: params.fileName ?? "evidence.txt",
+      digest: params.digest,
+      file_name: params.fileName,
       milestone_id: params.milestoneId,
       dispute_id: params.disputeId,
-      content_type: "text/plain",
-      visibility: "private"
+      content_type: params.contentType,
+      size_bytes: params.sizeBytes
     })
   });
   if (!response.ok) {
@@ -175,10 +224,11 @@ export async function fetchReputation(walletAddress: string): Promise<Reputation
   return toReputation((await response.json()) as ReputationRead);
 }
 
-export async function refreshReputation(walletAddress: string): Promise<Reputation> {
+export async function refreshReputation(session: AuthenticatedWalletSession): Promise<Reputation> {
   const baseUrl = apiBaseUrl();
-  const response = await fetch(`${baseUrl}/reputation/${walletAddress}/refresh`, {
-    method: "POST"
+  const response = await fetch(`${baseUrl}/reputation/${session.address}/refresh`, {
+    method: "POST",
+    headers: authorizedHeaders(session, false)
   });
   if (!response.ok) {
     throw new Error(`API returned ${response.status}`);
@@ -190,12 +240,44 @@ function apiBaseUrl(): string {
   return runtimeConfig.apiBaseUrl;
 }
 
+function authorizedHeaders(
+  session: AuthenticatedWalletSession,
+  json = true
+): Record<string, string> {
+  return {
+    ...(json ? { "Content-Type": "application/json" } : {}),
+    Authorization: `Bearer ${session.accessToken}`
+  };
+}
+
+async function fetchWithColdStartRetry(url: string, onWake?: () => void): Promise<Response> {
+  const delays = [0, 1200, 2400, 4000];
+  let lastError: unknown;
+  for (let attempt = 0; attempt < delays.length; attempt += 1) {
+    if (delays[attempt] > 0) {
+      onWake?.();
+      await new Promise((resolve) => window.setTimeout(resolve, delays[attempt]));
+    }
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (![502, 503, 504].includes(response.status) || attempt === delays.length - 1) {
+        return response;
+      }
+      lastError = new Error(`Demo API returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+      if (attempt === delays.length - 1) throw error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Demo API did not wake up in time.");
+}
+
 function toMarketplaceJob(job: ApiJob): MarketplaceJob {
   const id = job.onchain_job_id;
   return {
     dbId: job.id,
     id,
-    title: job.title ?? `Contrato on-chain #${id}`,
+    title: job.title ?? `On-chain contract #${id}`,
     client: formatAddress(job.client_wallet),
     freelancerWallet: job.freelancer_wallet,
     budget: `USDC ${formatUsdcRaw(job.total_amount_raw)}`,
@@ -203,7 +285,7 @@ function toMarketplaceJob(job: ApiJob): MarketplaceJob {
     skills: ["Base", "USDC", "Escrow", "Indexed"],
     summary:
       job.public_summary ??
-      "Job projetado a partir de eventos on-chain locais pelo indexer do backend.",
+      "Contract projected from Base Sepolia events by the TrustWork indexer.",
     escrowState: job.status,
     matchScore: 99,
     milestones: job.milestones
@@ -215,7 +297,7 @@ function toMarketplaceJob(job: ApiJob): MarketplaceJob {
         status: milestone.status,
         due: milestone.review_deadline
           ? formatDateTime(milestone.review_deadline)
-          : "aguardando entrega"
+          : "awaiting delivery"
       })),
     reputation: {
       completedJobs: 0,

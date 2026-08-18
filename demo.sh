@@ -1,218 +1,159 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
-export ANVIL_PORT="${ANVIL_PORT:-8545}"
-export POSTGRES_PORT="${POSTGRES_PORT:-55432}"
-export REDIS_PORT="${REDIS_PORT:-6379}"
-export BACKEND_PORT="${BACKEND_PORT:-18080}"
-export FRONTEND_PORT="${FRONTEND_PORT:-15174}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ANVIL_PORT="${ANVIL_PORT:-8545}"
+POSTGRES_PORT="${POSTGRES_PORT:-55432}"
+BACKEND_PORT="${BACKEND_PORT:-18080}"
+FRONTEND_PORT="${FRONTEND_PORT:-15174}"
+DEMO_TMP="$(mktemp -d)"
+INDEXER_TOKEN="local-indexer-token"
 
-# ─── Cores ─────────────────────────────────────────────
-bold="\033[1m"
-cyan="\033[36m"
-green="\033[32m"
-yellow="\033[33m"
-red="\033[31m"
-reset="\033[0m"
-
-info()  { echo -e "${cyan}${bold}[INFO]${reset}  $*"; }
-ok()    { echo -e "${green}${bold}[OK]${reset}    $*"; }
-warn()  { echo -e "${yellow}${bold}[WARN]${reset}  $*"; }
-err()   { echo -e "${red}${bold}[ERR]${reset}   $*" >&2; }
+info() { printf '[INFO] %s\n' "$*"; }
+ok() { printf '[OK]   %s\n' "$*"; }
+fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 
 cleanup() {
-    info "Limpando processos..."
-    [ -n "${ANVIL_PID:-}" ] && kill "$ANVIL_PID" 2>/dev/null && ok "Anvil parado"
-    [ -n "${BACKEND_PID:-}" ] && kill "$BACKEND_PID" 2>/dev/null && ok "Backend parado"
-    [ -n "${FRONTEND_PID:-}" ] && kill "$FRONTEND_PID" 2>/dev/null && ok "Frontend parado"
-    info "Pronto."
+  for pid in "${FRONTEND_PID:-}" "${BACKEND_PID:-}" "${ANVIL_PID:-}"; do
+    if [[ -n "$pid" ]]; then kill "$pid" 2>/dev/null || true; fi
+  done
+  rm -r "$DEMO_TMP" 2>/dev/null || true
 }
+trap cleanup EXIT INT TERM
 
-ensure_port_free() {
-    local port="$1" name="$2"
-    # Tenta ss, depois lsof, depois fuser
-    local pid
-    pid=$(ss -tlnp 2>/dev/null | grep ":$port " | grep -oP 'pid=\K[0-9]+' | head -1 || true)
-    if [ -z "$pid" ]; then
-        pid=$(lsof -ti ":$port" 2>/dev/null | head -1 || true)
-    fi
-    if [ -z "$pid" ]; then
-        pid=$(fuser "$port/tcp" 2>/dev/null || true)
-    fi
-    if [ -n "$pid" ] && [ "$pid" != "0" ]; then
-        err "${name} ja usa a porta ${port} (pid ${pid}); escolha outra porta ou encerre o processo"
-        exit 1
-    fi
-}
-trap cleanup EXIT
-trap 'exit 130' INT TERM
-
-# ─── 1. Verificar dependencias ──────────────────────
-info "Verificando dependencias..."
-command -v docker       >/dev/null || { err "docker nao encontrado"; exit 1; }
-command -v anvil        >/dev/null || { err "anvil nao encontrado (foundry)"; exit 1; }
-command -v forge        >/dev/null || { err "forge nao encontrado (foundry)"; exit 1; }
-command -v curl         >/dev/null || { err "curl nao encontrado"; exit 1; }
-[ -f "$ROOT/backend/.venv/bin/uvicorn" ] || { err "backend/.venv nao encontrado — rode 'python -m venv .venv' primeiro"; exit 1; }
-[ -d "$ROOT/frontend/node_modules" ]     || { err "frontend/node_modules ausente — rode 'npm ci' primeiro"; exit 1; }
-ok "Dependencias OK"
-
-# ─── 2. Subir infra (Postgres + Redis) com Docker ───
-info "Subindo Postgres e Redis via Docker..."
-docker compose up -d postgres redis 2>&1 | sed 's/^/  /'
-
-# Esperar Postgres ficar pronto
-for i in $(seq 1 15); do
-    if docker compose exec postgres pg_isready -U postgres -d freelance_escrow >/dev/null 2>&1; then
-        ok "Postgres pronto"
-        break
-    fi
-    [ "$i" -eq 15 ] && { err "Postgres nao ficou pronto"; exit 1; }
-    sleep 1
+for command in docker anvil forge cast curl uv npm python3; do
+  command -v "$command" >/dev/null || fail "$command is required"
 done
-ok "Redis pronto"
 
-# ─── 3. Subir Anvil ──────────────────────────────────
-ensure_port_free "$ANVIL_PORT" "Anvil"
-info "Iniciando Anvil na porta ${ANVIL_PORT}..."
-anvil --host 0.0.0.0 --port "$ANVIL_PORT" > /tmp/anvil.log 2>&1 &
+port_must_be_free() {
+  local port="$1"
+  if ss -tln 2>/dev/null | awk '{print $4}' | grep -Eq "(^|:)${port}$"; then
+    fail "Port ${port} is already in use"
+  fi
+}
+
+port_must_be_free "$ANVIL_PORT"
+port_must_be_free "$BACKEND_PORT"
+port_must_be_free "$FRONTEND_PORT"
+
+info "Starting PostgreSQL"
+POSTGRES_PORT="$POSTGRES_PORT" docker compose -f "$ROOT/docker-compose.yml" up -d postgres
+for attempt in $(seq 1 30); do
+  if POSTGRES_PORT="$POSTGRES_PORT" docker compose -f "$ROOT/docker-compose.yml" exec -T postgres pg_isready -U postgres -d trustwork >/dev/null 2>&1; then
+    break
+  fi
+  [[ "$attempt" -lt 30 ]] || fail "PostgreSQL did not become ready"
+  sleep 1
+done
+ok "PostgreSQL is ready"
+if ! POSTGRES_PORT="$POSTGRES_PORT" docker compose -f "$ROOT/docker-compose.yml" exec -T \
+  postgres psql -U postgres -Atqc "SELECT 1 FROM pg_database WHERE datname = 'trustwork_demo'" \
+  | grep -qx 1; then
+  POSTGRES_PORT="$POSTGRES_PORT" docker compose -f "$ROOT/docker-compose.yml" exec -T \
+    postgres createdb -U postgres trustwork_demo
+fi
+
+info "Starting an isolated Anvil chain"
+anvil --host 127.0.0.1 --port "$ANVIL_PORT" --config-out "$DEMO_TMP/anvil.json" >"$DEMO_TMP/anvil.log" 2>&1 &
 ANVIL_PID=$!
-# Esperar ate 15s pelo Anvil
-for i in $(seq 1 15); do
-    if curl -sf "http://127.0.0.1:${ANVIL_PORT}" -o /dev/null 2>/dev/null; then
-        ok "Anvil rodando em :${ANVIL_PORT} (pid ${ANVIL_PID})"
-        break
-    fi
-    if ! kill -0 "$ANVIL_PID" 2>/dev/null; then
-        err "Anvil morreu. Log:"
-        sed 's/^/  /' /tmp/anvil.log
-        exit 1
-    fi
-    sleep 1
+for attempt in $(seq 1 30); do
+  if cast chain-id --rpc-url "http://127.0.0.1:${ANVIL_PORT}" >/dev/null 2>&1; then break; fi
+  [[ "$attempt" -lt 30 ]] || fail "Anvil did not become ready"
+  sleep 1
 done
 
-# ─── 4. Deploy contratos ─────────────────────────────
-info "Deployando MockUSDC + FreelanceEscrow..."
-cd "$ROOT/contracts"
-DEPLOY_OUTPUT=$(forge script script/DeployLocal.s.sol --broadcast --rpc-url "http://127.0.0.1:${ANVIL_PORT}" 2>&1)
-echo "$DEPLOY_OUTPUT" | sed 's/^/  /'
+readarray -t ANVIL_VALUES < <(python3 - "$DEMO_TMP/anvil.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+print(data["private_keys"][0])
+print(data["available_accounts"][1])
+PY
+)
+DEMO_PRIVATE_KEY="${ANVIL_VALUES[0]}"
+DEMO_FREELANCER="${ANVIL_VALUES[1]}"
 
-# Extrair enderecos do log
-ESCROW_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP 'FreelanceEscrow:\s+\K(0x[0-9a-fA-F]+)' | head -1)
-USDC_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP 'MockUSDC:\s+\K(0x[0-9a-fA-F]+)' | head -1)
-DEPLOYER=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployer/Admin:\s+\K(0x[0-9a-fA-F]+)' | head -1)
+info "Deploying the local test token and TrustWork escrow"
+DEPLOY_OUTPUT="$({
+  cd "$ROOT/contracts"
+  PRIVATE_KEY="$DEMO_PRIVATE_KEY" forge script script/DeployLocal.s.sol:DeployLocal \
+    --broadcast --rpc-url "http://127.0.0.1:${ANVIL_PORT}"
+} 2>&1)"
+ESCROW_ADDRESS="$(sed -nE 's/.*FreelanceEscrow:[[:space:]]+(0x[0-9a-fA-F]+).*/\1/p' <<<"$DEPLOY_OUTPUT" | head -1)"
+USDC_ADDRESS="$(sed -nE 's/.*MockUSDC:[[:space:]]+(0x[0-9a-fA-F]+).*/\1/p' <<<"$DEPLOY_OUTPUT" | head -1)"
+ADMIN_ADDRESS="$(sed -nE 's/.*Deployer\/Admin:[[:space:]]+(0x[0-9a-fA-F]+).*/\1/p' <<<"$DEPLOY_OUTPUT" | head -1)"
+[[ -n "$ESCROW_ADDRESS" && -n "$USDC_ADDRESS" ]] || fail "Could not parse deployed contract addresses"
 
-[ -n "$ESCROW_ADDR" ] && [ -n "$USDC_ADDR" ] || { err "Falha ao extrair enderecos do deploy"; exit 1; }
-ok "MockUSDC:      ${USDC_ADDR}"
-ok "FreelanceEscrow: ${ESCROW_ADDR}"
-ok "Admin:         ${DEPLOYER}"
+info "Creating and funding a clearly local demo job"
+(
+  cd "$ROOT/contracts"
+  PRIVATE_KEY="$DEMO_PRIVATE_KEY" \
+  DEMO_FREELANCER="$DEMO_FREELANCER" \
+  ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDRESS" \
+  USDC_CONTRACT_ADDRESS="$USDC_ADDRESS" \
+  forge script script/CreateDemoJob.s.sol:CreateDemoJob \
+    --broadcast --rpc-url "http://127.0.0.1:${ANVIL_PORT}" >/dev/null
+)
 
-# Criar job demo
-info "Criando job demo on-chain..."
-ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDR" \
-USDC_CONTRACT_ADDRESS="$USDC_ADDR" \
-forge script script/CreateDemoJob.s.sol --broadcast --rpc-url "http://127.0.0.1:${ANVIL_PORT}" 2>&1 | sed 's/^/  /'
-ok "Job demo criado"
+DATABASE_URL="postgresql+psycopg://postgres:postgres@127.0.0.1:${POSTGRES_PORT}/trustwork_demo"
+info "Applying database migrations"
+(
+  cd "$ROOT/backend"
+  DATABASE_URL="$DATABASE_URL" uv run --locked alembic upgrade head
+)
 
-# ─── 5. Subir backend ────────────────────────────────
-cd "$ROOT/backend"
-ensure_port_free "$BACKEND_PORT" "Backend"
-info "Iniciando backend na porta ${BACKEND_PORT}..."
-export CHAIN_ID=31337
-export RPC_URL="http://127.0.0.1:${ANVIL_PORT}"
-export ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDR"
-export USDC_CONTRACT_ADDRESS="$USDC_ADDR"
-export ESCROW_ARBITRATOR="$DEPLOYER"
-export FEE_RECIPIENT="$DEPLOYER"
-export DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:${POSTGRES_PORT}/freelance_escrow"
-export REDIS_URL="redis://localhost:${REDIS_PORT}/0"
-export API_CORS_ORIGINS="http://localhost:${FRONTEND_PORT}"
-export INDEXER_START_BLOCK=0
-
-BACKEND_LOG="${TMPDIR:-/tmp}/trustwork-backend.log"
-.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" > "$BACKEND_LOG" 2>&1 &
+info "Starting the TrustWork API"
+(
+  cd "$ROOT/backend"
+  APP_ENVIRONMENT=development \
+  DATABASE_URL="$DATABASE_URL" \
+  CHAIN_ID=31337 \
+  RPC_URL="http://127.0.0.1:${ANVIL_PORT}" \
+  ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDRESS" \
+  USDC_CONTRACT_ADDRESS="$USDC_ADDRESS" \
+  ESCROW_ARBITRATOR="$ADMIN_ADDRESS" \
+  API_CORS_ORIGINS="http://localhost:${FRONTEND_PORT}" \
+  SIWE_DOMAIN="localhost:${FRONTEND_PORT}" \
+  SIWE_ORIGIN="http://localhost:${FRONTEND_PORT}" \
+  INDEXER_CONFIRMATIONS=0 \
+  INDEXER_TOKEN="$INDEXER_TOKEN" \
+  uv run --locked uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT"
+) >"$DEMO_TMP/backend.log" 2>&1 &
 BACKEND_PID=$!
-for i in $(seq 1 30); do
-    if curl -sf "http://127.0.0.1:${BACKEND_PORT}/health" > /dev/null; then
-        ok "Backend rodando em :${BACKEND_PORT} (pid ${BACKEND_PID})"
-        ok "Health check OK"
-        break
-    fi
-    if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
-        err "Backend encerrou durante o startup. Log:"
-        sed 's/^/  /' "$BACKEND_LOG" >&2
-        exit 1
-    fi
-    if [ "$i" -eq 30 ]; then
-        err "Backend nao ficou pronto em 30 segundos. Log:"
-        sed 's/^/  /' "$BACKEND_LOG" >&2
-        exit 1
-    fi
-    sleep 1
+for attempt in $(seq 1 45); do
+  if curl -fsS "http://127.0.0.1:${BACKEND_PORT}/health/live" >/dev/null 2>&1; then break; fi
+  [[ "$attempt" -lt 45 ]] || { sed -n '1,160p' "$DEMO_TMP/backend.log" >&2; fail "API did not become ready"; }
+  sleep 1
 done
+if ! curl -fsS -X POST -H "X-Indexer-Token: ${INDEXER_TOKEN}" \
+  "http://127.0.0.1:${BACKEND_PORT}/indexer/reconcile" >/dev/null; then
+  sleep 1
+  sed -n '1,200p' "$DEMO_TMP/backend.log" >&2
+  fail "The local index reconciliation failed"
+fi
+ok "The local job is indexed"
 
-# ─── 6. Indexar eventos ──────────────────────────────
-info "Indexando eventos on-chain..."
-curl -fsS -X POST "http://127.0.0.1:${BACKEND_PORT}/indexer/poll" | sed 's/^/  /'
-ok "Eventos indexados"
-
-# Verificar se o job apareceu
-JOBS=$(curl -sf "http://127.0.0.1:${BACKEND_PORT}/jobs")
-echo "$JOBS" | python3 -c "import sys,json; data=json.load(sys.stdin); print(f'  Jobs no banco: {len(data)}')" 2>/dev/null || warn "Nenhum job encontrado no banco"
-
-# ─── 7. Subir frontend ────────────────────────────────
-cd "$ROOT/frontend"
-ensure_port_free "$FRONTEND_PORT" "Frontend"
-info "Iniciando frontend na porta ${FRONTEND_PORT}..."
-FRONTEND_LOG="${TMPDIR:-/tmp}/trustwork-frontend.log"
-VITE_API_BASE_URL="http://localhost:${BACKEND_PORT}" \
-VITE_CHAIN_ID=31337 \
-VITE_ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDR" \
-VITE_USDC_CONTRACT_ADDRESS="$USDC_ADDR" \
-VITE_ENABLE_DEMO_DATA=false \
-npm run dev -- --port "$FRONTEND_PORT" > "$FRONTEND_LOG" 2>&1 &
+info "Starting the frontend"
+(
+  cd "$ROOT/frontend"
+  VITE_API_BASE_URL="http://127.0.0.1:${BACKEND_PORT}" \
+  VITE_RPC_URL="http://127.0.0.1:${ANVIL_PORT}" \
+  VITE_CHAIN_ID=31337 \
+  VITE_ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDRESS" \
+  VITE_USDC_CONTRACT_ADDRESS="$USDC_ADDRESS" \
+  VITE_ENABLE_DEMO_DATA=false \
+  npm run dev -- --host 127.0.0.1 --port "$FRONTEND_PORT"
+) >"$DEMO_TMP/frontend.log" 2>&1 &
 FRONTEND_PID=$!
-for i in $(seq 1 30); do
-    if curl -sf "http://127.0.0.1:${FRONTEND_PORT}/" > /dev/null; then
-        ok "Frontend rodando em :${FRONTEND_PORT} (pid ${FRONTEND_PID})"
-        break
-    fi
-    if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
-        err "Frontend encerrou durante o startup. Log:"
-        sed 's/^/  /' "$FRONTEND_LOG" >&2
-        exit 1
-    fi
-    if [ "$i" -eq 30 ]; then
-        err "Frontend nao ficou pronto em 30 segundos. Log:"
-        sed 's/^/  /' "$FRONTEND_LOG" >&2
-        exit 1
-    fi
-    sleep 1
+for attempt in $(seq 1 45); do
+  if curl -fsS "http://127.0.0.1:${FRONTEND_PORT}/app" >/dev/null 2>&1; then break; fi
+  [[ "$attempt" -lt 45 ]] || { sed -n '1,160p' "$DEMO_TMP/frontend.log" >&2; fail "Frontend did not become ready"; }
+  sleep 1
 done
 
-# ─── 8. Sumario ──────────────────────────────────────
-echo ""
-echo -e "${green}${bold}┌──────────────────────────────────────────────────────┐${reset}"
-echo -e "${green}${bold}│  MVP MatchEscrow — rodando!                          │${reset}"
-echo -e "${green}${bold}├──────────────────────────────────────────────────────┤${reset}"
-printf "${bold}│  Frontend:${reset}  http://localhost:%-11d                │\n" "$FRONTEND_PORT"
-printf "${bold}│  Backend:${reset}   http://localhost:%-11d                │\n" "$BACKEND_PORT"
-printf "${bold}│  Anvil RPC:${reset} http://127.0.0.1:%-11d                │\n" "$ANVIL_PORT"
-echo -e "${green}${bold}│                                                      │${reset}"
-printf "${bold}│  Escrow:${reset}    %-42s │\n" "$ESCROW_ADDR"
-printf "${bold}│  USDC:${reset}      %-42s │\n" "$USDC_ADDR"
-echo -e "${green}${bold}│                                                      │${reset}"
-printf "${bold}│  Jobs via API:${reset} http://localhost:%-5d/jobs          │\n" "$BACKEND_PORT"
-echo -e "${green}${bold}│                                                      │${reset}"
-echo -e "${green}${bold}│  MetaMask: adicione rede:                            │${reset}"
-printf "${bold}│  RPC:${reset}       http://127.0.0.1:%-11d                │\n" "$ANVIL_PORT"
-echo -e "${green}${bold}│  Chain ID:${reset}  31337                                  │${reset}"
-echo -e "${green}${bold}│  Simbolo:${reset}  ETH                                      │${reset}"
-echo -e "${green}${bold}└──────────────────────────────────────────────────────┘${reset}"
-echo ""
-
-echo -e "${yellow}Pressione Ctrl+C para parar tudo.${reset}"
-
-# ─── 9. Segurar e monitorar processos ────────────────
+printf '\nTrustWork local demo is ready\n'
+printf '  Landing:     http://127.0.0.1:%s/\n' "$FRONTEND_PORT"
+printf '  Marketplace: http://127.0.0.1:%s/app\n' "$FRONTEND_PORT"
+printf '  API:         http://127.0.0.1:%s\n' "$BACKEND_PORT"
+printf '  Escrow:      %s\n' "$ESCROW_ADDRESS"
+printf '\nThis is an isolated local chain. Press Ctrl+C to stop the app processes.\n'
 wait

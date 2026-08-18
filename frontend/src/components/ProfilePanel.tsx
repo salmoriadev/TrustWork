@@ -1,8 +1,8 @@
-import type { WalletSession } from "../lib/wallet";
+import type { AuthenticatedWalletSession } from "../lib/wallet";
 import { formatAddress } from "../lib/formatters";
 
 interface ProfilePanelProps {
-  session: WalletSession | null;
+  session: AuthenticatedWalletSession | null;
   profileName: string;
   rolePreference: "client" | "freelancer" | "both";
   status: string;
@@ -27,27 +27,27 @@ export function ProfilePanel({
           {session ? session.address.slice(2, 4).toUpperCase() : "?"}
         </div>
         <div className="min-w-0">
-          <p className="eyebrow">Perfil</p>
+          <p className="eyebrow">Profile</p>
           <h2 className="mt-1 truncate text-sm font-extrabold text-ink">
-            {session ? formatAddress(session.address) : "Conecte uma wallet"}
+            {session ? formatAddress(session.address) : "Connect a wallet"}
           </h2>
         </div>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="label mb-1.5" htmlFor="profile-name">Nome público</label>
+          <label className="label mb-1.5" htmlFor="profile-name">Public name</label>
           <input
             id="profile-name"
             className="input"
             disabled={!session}
             value={profileName}
             onChange={(event) => onNameChange(event.target.value)}
-            placeholder="Seu nome"
+            placeholder="Your name"
           />
         </div>
         <div>
-          <label className="label mb-1.5" htmlFor="profile-role">Atuação</label>
+          <label className="label mb-1.5" htmlFor="profile-role">Role</label>
           <select
             id="profile-role"
             className="input"
@@ -55,8 +55,8 @@ export function ProfilePanel({
             value={rolePreference}
             onChange={(event) => onRoleChange(event.target.value as "client" | "freelancer" | "both")}
           >
-            <option value="both">Cliente e freelancer</option>
-            <option value="client">Cliente</option>
+            <option value="both">Client and freelancer</option>
+            <option value="client">Client</option>
             <option value="freelancer">Freelancer</option>
           </select>
         </div>
@@ -66,7 +66,7 @@ export function ProfilePanel({
           disabled={!session}
           onClick={onSave}
         >
-          Salvar perfil
+          Save profile
         </button>
         {status ? (
           <p className="rounded-lg bg-app px-3 py-2.5 text-xs leading-relaxed text-muted" role="status">{status}</p>

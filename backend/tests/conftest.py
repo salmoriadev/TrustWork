@@ -1,18 +1,25 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+import jwt
 import pytest
+from eth_account import Account
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine, get_db
 from app.main import app
 from app.models import Job, JobStatus
+from app.services.auth import TOKEN_AUDIENCE, TOKEN_ISSUER
 
-CLIENT_WALLET = "0x00000000000000000000000000000000000000aa"
-FREELANCER_WALLET = "0x00000000000000000000000000000000000000bb"
-OTHER_CLIENT_WALLET = "0x00000000000000000000000000000000000000cc"
+CLIENT_ACCOUNT = Account.create("trustwork-client-test")
+CLIENT_PRIVATE_KEY = CLIENT_ACCOUNT.key
+CLIENT_WALLET = CLIENT_ACCOUNT.address.lower()
+FREELANCER_WALLET = Account.create("trustwork-freelancer-test").address.lower()
+OTHER_CLIENT_WALLET = Account.create("trustwork-other-client-test").address.lower()
 CONTRACT_ADDRESS = "0x00000000000000000000000000000000000000dd"
 TOKEN_ADDRESS = "0x00000000000000000000000000000000000000ee"
 
@@ -44,6 +51,28 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def auth_headers() -> Callable[[str, timedelta | None], dict[str, str]]:
+    def build(wallet: str = CLIENT_WALLET, lifetime: timedelta | None = None) -> dict[str, str]:
+        now = datetime.now(UTC)
+        token = jwt.encode(
+            {
+                "sub": wallet.lower(),
+                "chain_id": settings.chain_id,
+                "iss": TOKEN_ISSUER,
+                "aud": TOKEN_AUDIENCE,
+                "iat": now,
+                "exp": now + (lifetime or timedelta(minutes=5)),
+                "jti": "pytest-token",
+            },
+            settings.jwt_secret,
+            algorithm="HS256",
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    return build
 
 
 @pytest.fixture()

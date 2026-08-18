@@ -47,13 +47,16 @@ class UserRead(BaseModel):
 
 
 class UserUpsertRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     display_name: str | None = Field(default=None, max_length=120)
     role_preference: str | None = Field(default="both", pattern="^(client|freelancer|both)$")
-    profile_visibility: str = Field(default="public", pattern="^(public|private)$")
+    profile_visibility: str = Field(default="public", pattern="^public$")
 
 
 class SwipeCreateRequest(BaseModel):
-    actor_wallet: str = Field(min_length=42, max_length=42)
+    model_config = ConfigDict(extra="forbid")
+
     target_type: str = Field(pattern="^(job|freelancer)$")
     target_id: UUID
     direction: str = Field(pattern="^(left|right|super)$")
@@ -73,14 +76,15 @@ class SwipeRead(BaseModel):
 
 
 class EvidenceCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     job_id: UUID
-    uploader_wallet: str = Field(min_length=42, max_length=42)
-    body: str = Field(min_length=1)
-    file_name: str = Field(default="evidence.txt", max_length=180)
+    digest: str = Field(pattern=r"^0x[0-9a-fA-F]{64}$")
+    file_name: str = Field(min_length=1, max_length=180)
     milestone_id: UUID | None = None
     dispute_id: UUID | None = None
-    content_type: str = "text/plain"
-    visibility: str = Field(default="private", pattern="^(private|participants|arbitrator)$")
+    content_type: str = Field(default="application/octet-stream", min_length=1, max_length=255)
+    size_bytes: int = Field(ge=0, le=25_000_000)
 
 
 class EvidenceRead(BaseModel):
@@ -91,15 +95,16 @@ class EvidenceRead(BaseModel):
     milestone_id: UUID | None
     dispute_id: UUID | None
     uploader_wallet: str
-    storage_uri: str
+    file_name: str
     sha256_hash: str
-    content_type: str | None
-    size_bytes: int | None
-    visibility: str
+    content_type: str
+    size_bytes: int
     created_at: datetime
 
 
 class JobPrepareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     freelancer_wallet: str = Field(min_length=42, max_length=42)
     milestone_amounts_raw: list[Uint256String] = Field(min_length=1)
     job_id: PositiveUint256String | None = None
@@ -117,6 +122,42 @@ class JobPrepareRead(BaseModel):
 
 class IndexerPollRead(BaseModel):
     latest_block: int
+    indexed_through: int
+
+
+class IndexerSyncRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transaction_hash: str = Field(pattern=r"^0x[0-9a-fA-F]{64}$")
+    receipt_block: int = Field(ge=0)
+
+
+class AuthChallengeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    wallet_address: str = Field(min_length=42, max_length=42)
+    chain_id: int
+
+
+class AuthChallengeRead(BaseModel):
+    message: str
+    nonce: str
+    expires_at: datetime
+
+
+class AuthVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(min_length=80, max_length=4096)
+    signature: str = Field(pattern=r"^0x[0-9a-fA-F]{130}$")
+
+
+class AuthTokenRead(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+    wallet_address: str
+    chain_id: int
 
 
 class MilestoneRead(BaseModel):
