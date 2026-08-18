@@ -105,3 +105,16 @@ def test_prepare_job_rejects_uint256_overflow(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_prepare_job_rejects_zero_job_id(client: TestClient) -> None:
+    response = client.post(
+        "/jobs/prepare",
+        json={
+            "freelancer_wallet": "0x00000000000000000000000000000000000000bb",
+            "milestone_amounts_raw": ["1"],
+            "job_id": "0",
+        },
+    )
+
+    assert response.status_code == 422

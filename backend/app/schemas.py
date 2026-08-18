@@ -20,6 +20,12 @@ Uint256String = Annotated[
     AfterValidator(validate_uint256),
 ]
 
+PositiveUint256String = Annotated[
+    str,
+    Field(pattern=r"^[1-9][0-9]*$", max_length=78),
+    AfterValidator(validate_uint256),
+]
+
 
 class EscrowConfigRead(BaseModel):
     chain_id: int
@@ -96,7 +102,7 @@ class EvidenceRead(BaseModel):
 class JobPrepareRequest(BaseModel):
     freelancer_wallet: str = Field(min_length=42, max_length=42)
     milestone_amounts_raw: list[Uint256String] = Field(min_length=1)
-    job_id: Uint256String | None = None
+    job_id: PositiveUint256String | None = None
 
 
 class JobPrepareRead(BaseModel):

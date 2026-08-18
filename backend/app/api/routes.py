@@ -109,7 +109,7 @@ def prepare_job(payload: JobPrepareRequest) -> JobPrepareRead:
             detail=f"Total amount {total} exceeds max job amount {settings.max_job_amount_raw}",
         )
 
-    job_id = payload.job_id or str(time_ns())
+    job_id = payload.job_id if payload.job_id is not None else str(time_ns())
     return JobPrepareRead(
         chain_id=settings.chain_id,
         escrow_contract_address=settings.escrow_contract_address,
