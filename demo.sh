@@ -111,7 +111,7 @@ info "Starting the TrustWork API"
   ESCROW_CONTRACT_ADDRESS="$ESCROW_ADDRESS" \
   USDC_CONTRACT_ADDRESS="$USDC_ADDRESS" \
   ESCROW_ARBITRATOR="$ADMIN_ADDRESS" \
-  API_CORS_ORIGINS="http://localhost:${FRONTEND_PORT}" \
+  API_CORS_ORIGINS="http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}" \
   SIWE_DOMAIN="localhost:${FRONTEND_PORT}" \
   SIWE_ORIGIN="http://localhost:${FRONTEND_PORT}" \
   INDEXER_CONFIRMATIONS=0 \
@@ -151,8 +151,8 @@ for attempt in $(seq 1 45); do
 done
 
 printf '\nTrustWork local demo is ready\n'
-printf '  Landing:     http://127.0.0.1:%s/\n' "$FRONTEND_PORT"
-printf '  Marketplace: http://127.0.0.1:%s/app\n' "$FRONTEND_PORT"
+printf '  Landing:     http://localhost:%s/\n' "$FRONTEND_PORT"
+printf '  Marketplace: http://localhost:%s/app\n' "$FRONTEND_PORT"
 printf '  API:         http://127.0.0.1:%s\n' "$BACKEND_PORT"
 printf '  Escrow:      %s\n' "$ESCROW_ADDRESS"
 printf '\nThis is an isolated local chain. Press Ctrl+C to stop the app processes.\n'
