@@ -1,25 +1,25 @@
 # Portfolio security review
 
-Review date: 2026-08-18  
+Review date: 2026-08-21
+
 Scope: current worktree, complete reachable Git history, React/Vite frontend, FastAPI authentication and authorization, event indexing, deployment configuration, and shipped dependencies.
 
 ## Release verdict
 
-**Code and current worktree: pass with one non-runtime tooling exception. Public launch gate: blocked pending a history decision and provider deployment.**
+**Code, current worktree, and complete reachable history: pass with one accepted non-runtime tooling exception. Public launch gate: blocked only by provider deployment and live smoke testing.**
 
-The current tree contains no literal private key and passed Trivy secret/misconfiguration scanning. TruffleHog scanned all reachable Git objects with zero verified findings; its two unverified findings are the same pinned CodeQL action commit SHA, not a credential. A separate explicit 64-hex history audit found the well-known default Anvil development key in earlier commits, however. Although it is public test tooling rather than a real TrustWork credential, it is still a private-key-shaped value and therefore fails this project's stricter “no private keys anywhere in history” launch rule.
+The current tree contains no literal private key and passed Trivy secret/misconfiguration scanning. The complete reachable history was rewritten with the owner's approval to replace the standard Anvil development key while preserving all 22 commits, their order, topology, authors, dates, messages, and the current `HEAD` tree. Post-rewrite TruffleHog and explicit private-key-pattern scans report no findings.
 
-The GitHub repository was already public when this review began. No release, branch-protection change, social-preview upload, or launch announcement was performed in this work because the history gate and live deployment gate have not passed.
+The GitHub repository was already public when this review began. A public release and launch announcement remain intentionally deferred until the Base Sepolia contract, API, and frontend have real provider URLs and pass the documented live smoke tests.
 
 ## Findings
 
-### TW-SEC-001 — Private-key-shaped Anvil fixture remains in Git history
+### TW-SEC-001 — Private-key-shaped Anvil fixture in former Git history
 
 - Severity: **High for the declared release gate; informational for asset compromise**
-- Status: **Open — requires owner approval for a coordinated history rewrite**
-- Evidence: reachable commit `1fd649721d31` and earlier versions of `contracts/README.md`, `contracts/script/DeployLocal.s.sol`, and `contracts/script/CreateDemoJob.s.sol` contain the standard Anvil account key.
-- Current mitigation: the current branch obtains an ephemeral Anvil key from a temporary `anvil --config-out` file; tests generate accounts at runtime; current documentation contains no literal key.
-- Required decision: either (a) approve a repository history rewrite and coordinated force-push, understanding that public forks/caches cannot be recalled, or (b) explicitly waive the literal-history rule because this is the universally published Anvil development key. Do not rewrite or force-push without that decision.
+- Status: **Resolved on 2026-08-20**
+- Remediation: with the owner's approval, all 22 commits were rewritten and force-pushed with lease. The standard Anvil key was replaced in the historical versions of `contracts/README.md`, `contracts/script/DeployLocal.s.sol`, and `contracts/script/CreateDemoJob.s.sol`; commit order, topology, authorship, timestamps, messages, and the final tree were preserved.
+- Verification: the rewritten history contains no exact match for the fixture and no private-key-shaped 64-hex value. Public caches or third-party clones created before the rewrite cannot be recalled; the repository had no forks or open pull requests when the rewrite was performed.
 
 ### TW-SEC-002 — Development-only audit tooling has transitive advisories
 
@@ -49,10 +49,10 @@ The GitHub repository was already public when this review began. No release, bra
 ## Scan evidence
 
 - Trivy `0.70.0` filesystem scan: zero high/critical secret or misconfiguration findings.
-- TruffleHog `3.90.8` Git scan: 1,072 chunks, 1,861,740 bytes, zero verified findings and two reviewed false positives for the pinned CodeQL action SHA.
-- Manual complete-history key/credential patterns: only the standard Anvil key described in TW-SEC-001 and local placeholder PostgreSQL credentials.
+- TruffleHog `3.90.8` Git scan after the rewrite: 1,080 chunks, 1,864,274 bytes, zero verified and zero unverified findings.
+- Manual complete-history key/credential patterns after the rewrite: zero private-key-shaped commits and zero matches for the removed Anvil fixture.
 - `npm audit --omit=dev`: zero findings.
 - Backend tests: 21 passed after the security changes.
 - Built backend container: zero high/critical OS or Python package findings.
 
-Re-run all scans after any history rewrite and immediately before publishing the portfolio release.
+Re-run all scans immediately before publishing the portfolio release.

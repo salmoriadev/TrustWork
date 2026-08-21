@@ -11,4 +11,4 @@ All notable changes are documented here. This project follows semantic versionin
 
 ## 0.1.0-portfolio
 
-Pending live deployment, smoke tests, the documented history decision, and release tagging.
+Pending live deployment, smoke tests, and release tagging.
