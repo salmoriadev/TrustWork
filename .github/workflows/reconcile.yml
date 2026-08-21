@@ -10,15 +10,27 @@ permissions:
 
 jobs:
   reconcile:
+    name: Reconcile indexed events
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TRUSTWORK_API_URL: ${{ secrets.TRUSTWORK_API_URL }}
+      INDEXER_TOKEN: ${{ secrets.INDEXER_TOKEN }}
     steps:
-      - name: Reconcile confirmed escrow events
-        env:
-          TRUSTWORK_API_URL: ${{ secrets.TRUSTWORK_API_URL }}
-          INDEXER_TOKEN: ${{ secrets.INDEXER_TOKEN }}
+      - name: Report an unconfigured portfolio deployment
+        if: ${{ (env.TRUSTWORK_API_URL == '' || env.INDEXER_TOKEN == '') && github.event_name == 'schedule' }}
         run: |
-          test -n "$TRUSTWORK_API_URL"
-          test -n "$INDEXER_TOKEN"
+          echo "::notice title=Reconciliation skipped::The public API is not deployed yet, so the scheduled reconciliation has nothing to call."
+
+      - name: Require deployment secrets for manual reconciliation
+        if: ${{ (env.TRUSTWORK_API_URL == '' || env.INDEXER_TOKEN == '') && github.event_name == 'workflow_dispatch' }}
+        run: |
+          echo "::error title=Deployment not configured::Add TRUSTWORK_API_URL and INDEXER_TOKEN as GitHub Actions secrets before running reconciliation manually."
+          exit 1
+
+      - name: Reconcile confirmed escrow events
+        if: ${{ env.TRUSTWORK_API_URL != '' && env.INDEXER_TOKEN != '' }}
+        run: |
           curl --fail-with-body --retry 4 --retry-all-errors \
             --max-time 45 \
             --request POST \
