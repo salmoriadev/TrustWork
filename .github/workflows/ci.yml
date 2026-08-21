@@ -38,6 +38,7 @@ jobs:
         with:
           version: "0.11.26"
           enable-cache: true
+          cache-suffix: backend
       - run: uv sync --extra dev --locked
       - run: uv run alembic upgrade head
       - run: uv run ruff check app tests
@@ -95,6 +96,7 @@ jobs:
         with:
           version: "0.11.26"
           enable-cache: true
+          cache-suffix: contracts
       - run: forge fmt --check
       - run: forge test
       - run: uvx --from slither-analyzer==0.11.5 slither . --exclude-dependencies --fail-high
@@ -113,6 +115,7 @@ jobs:
         with:
           version: "0.11.26"
           enable-cache: true
+          cache-suffix: schema-contract
       - run: uv sync --project backend --extra dev --locked
       - run: npm ci --prefix frontend
       - run: ./scripts/generate-api-schema.sh
@@ -133,6 +136,7 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.11.26"
+          cache-suffix: release-manifests
       - run: npm ci --prefix frontend
       - run: ./scripts/sbom.sh artifacts
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
