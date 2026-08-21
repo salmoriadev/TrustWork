@@ -57,7 +57,7 @@ Rollback: promote the previous Vercel deployment and restore the corresponding R
 
 ## 7. Scheduled reconciliation
 
-Add repository secrets `TRUSTWORK_API_URL` and `INDEXER_TOKEN`, then manually run `Reconcile Base Sepolia events`. Confirm the protected endpoint returns the latest and indexed-through blocks before relying on its six-hour schedule.
+Keep the repository variable `PORTFOLIO_DEPLOYED` set to `false` until the API passes the live smoke test. Add repository secrets `TRUSTWORK_API_URL` and `INDEXER_TOKEN`, set `PORTFOLIO_DEPLOYED=true`, then manually run `Reconcile Base Sepolia events`. Confirm the protected endpoint returns the latest and indexed-through blocks before relying on its six-hour schedule. When the variable is not `true`, the workflow succeeds with an explicit deployment-pending notice; after activation, missing secrets or an unhealthy API fail the run.
 
 ## 8. Live smoke test
 
