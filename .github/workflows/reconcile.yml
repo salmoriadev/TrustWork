@@ -14,22 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
+      PORTFOLIO_DEPLOYED: ${{ vars.PORTFOLIO_DEPLOYED }}
       TRUSTWORK_API_URL: ${{ secrets.TRUSTWORK_API_URL }}
       INDEXER_TOKEN: ${{ secrets.INDEXER_TOKEN }}
     steps:
       - name: Report an unconfigured portfolio deployment
-        if: ${{ (env.TRUSTWORK_API_URL == '' || env.INDEXER_TOKEN == '') && github.event_name == 'schedule' }}
+        if: ${{ env.PORTFOLIO_DEPLOYED != 'true' }}
         run: |
-          echo "::notice title=Reconciliation skipped::The public API is not deployed yet, so the scheduled reconciliation has nothing to call."
+          echo "::notice title=Reconciliation skipped::PORTFOLIO_DEPLOYED is not true because the public API has not passed its live smoke test."
 
-      - name: Require deployment secrets for manual reconciliation
-        if: ${{ (env.TRUSTWORK_API_URL == '' || env.INDEXER_TOKEN == '') && github.event_name == 'workflow_dispatch' }}
+      - name: Require deployment secrets after launch
+        if: ${{ env.PORTFOLIO_DEPLOYED == 'true' && (env.TRUSTWORK_API_URL == '' || env.INDEXER_TOKEN == '') }}
         run: |
-          echo "::error title=Deployment not configured::Add TRUSTWORK_API_URL and INDEXER_TOKEN as GitHub Actions secrets before running reconciliation manually."
+          echo "::error title=Deployment secrets missing::PORTFOLIO_DEPLOYED is true, but TRUSTWORK_API_URL or INDEXER_TOKEN is not configured."
           exit 1
 
       - name: Reconcile confirmed escrow events
-        if: ${{ env.TRUSTWORK_API_URL != '' && env.INDEXER_TOKEN != '' }}
+        if: ${{ env.PORTFOLIO_DEPLOYED == 'true' && env.TRUSTWORK_API_URL != '' && env.INDEXER_TOKEN != '' }}
         run: |
           curl --fail-with-body --retry 4 --retry-all-errors \
             --max-time 45 \
