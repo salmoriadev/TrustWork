@@ -57,3 +57,4 @@ contracts/lib/
 *.dump
 *.sql.gz
 tmp/
+.vercel/

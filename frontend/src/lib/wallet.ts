@@ -18,6 +18,10 @@ export interface AuthenticatedWalletSession extends WalletSession {
   expiresAt: string;
 }
 
+type WalletConnectEip1193Provider = EIP1193Provider & {
+  connect: () => Promise<void>;
+};
+
 declare global {
   interface Window {
     ethereum?: EIP1193Provider;
@@ -26,6 +30,9 @@ declare global {
 
 export async function connectWallet(kind: WalletKind): Promise<WalletSession> {
   const provider = kind === "injected" ? injectedProvider() : await walletConnectProvider();
+  if (kind === "walletconnect") {
+    await (provider as WalletConnectEip1193Provider).connect();
+  }
   await ensureBaseSepolia(provider);
   const accounts = (await provider.request({ method: "eth_requestAccounts" })) as Hex[];
   if (!accounts[0]) throw new Error("The wallet did not return an account.");
@@ -82,7 +89,7 @@ function injectedProvider(): EIP1193Provider {
   return window.ethereum;
 }
 
-async function walletConnectProvider(): Promise<EIP1193Provider> {
+async function walletConnectProvider(): Promise<WalletConnectEip1193Provider> {
   if (!runtimeConfig.walletConnectProjectId) {
     throw new Error("WalletConnect is not configured for this deployment.");
   }
@@ -97,7 +104,7 @@ async function walletConnectProvider(): Promise<EIP1193Provider> {
       url: window.location.origin,
       icons: []
     }
-  }) as Promise<EIP1193Provider>;
+  }) as Promise<WalletConnectEip1193Provider>;
 }
 
 function parseRpcChainId(value: string): number {
