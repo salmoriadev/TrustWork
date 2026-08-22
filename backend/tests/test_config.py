@@ -26,6 +26,22 @@ def test_accepts_complete_production_configuration() -> None:
     assert production_settings().app_environment == "production"
 
 
+def test_normalizes_provider_postgresql_url_to_psycopg3() -> None:
+    settings = production_settings(
+        DATABASE_URL="postgresql://user:password@ep-example-pooler/neondb?sslmode=require"
+    )
+
+    assert settings.database_url == (
+        "postgresql+psycopg://user:password@ep-example-pooler/neondb?sslmode=require"
+    )
+
+
+def test_preserves_explicit_psycopg3_url() -> None:
+    database_url = "postgresql+psycopg://user:password@localhost/trustwork"
+
+    assert production_settings(DATABASE_URL=database_url).database_url == database_url
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
