@@ -20,7 +20,15 @@ export interface AuthenticatedWalletSession extends WalletSession {
 
 type WalletConnectEip1193Provider = EIP1193Provider & {
   connect: () => Promise<void>;
+  on: (event: "display_uri", listener: (uri: string) => void) => unknown;
+  removeListener: (event: "display_uri", listener: (uri: string) => void) => unknown;
+  signer?: { abortPairingAttempt?: () => void };
 };
+
+export interface WalletConnectOptions {
+  onPairingUri?: (uri: string) => void;
+  signal?: AbortSignal;
+}
 
 declare global {
   interface Window {
@@ -28,10 +36,16 @@ declare global {
   }
 }
 
-export async function connectWallet(kind: WalletKind): Promise<WalletSession> {
+export async function connectWallet(
+  kind: WalletKind,
+  walletConnectOptions: WalletConnectOptions = {}
+): Promise<WalletSession> {
   const provider = kind === "injected" ? injectedProvider() : await walletConnectProvider();
   if (kind === "walletconnect") {
-    await (provider as WalletConnectEip1193Provider).connect();
+    await connectWalletConnect(
+      provider as WalletConnectEip1193Provider,
+      walletConnectOptions
+    );
   }
   await ensureBaseSepolia(provider);
   const accounts = (await provider.request({ method: "eth_requestAccounts" })) as Hex[];
@@ -95,9 +109,8 @@ async function walletConnectProvider(): Promise<WalletConnectEip1193Provider> {
   }
   return EthereumProvider.init({
     projectId: runtimeConfig.walletConnectProjectId,
-    relayUrl: "wss://relay.walletconnect.org",
     chains: [runtimeConfig.chainId],
-    showQrModal: true,
+    showQrModal: false,
     rpcMap: { [runtimeConfig.chainId]: runtimeConfig.rpcUrl },
     metadata: {
       name: "TrustWork",
@@ -106,6 +119,35 @@ async function walletConnectProvider(): Promise<WalletConnectEip1193Provider> {
       icons: []
     }
   }) as Promise<WalletConnectEip1193Provider>;
+}
+
+async function connectWalletConnect(
+  provider: WalletConnectEip1193Provider,
+  options: WalletConnectOptions
+): Promise<void> {
+  const handlePairingUri = (uri: string) => options.onPairingUri?.(uri);
+  provider.on("display_uri", handlePairingUri);
+
+  let handleAbort: (() => void) | undefined;
+  try {
+    if (options.signal?.aborted) throw new Error("Wallet connection cancelled.");
+    const connection = provider.connect();
+    if (!options.signal) {
+      await connection;
+      return;
+    }
+    const cancellation = new Promise<never>((_, reject) => {
+      handleAbort = () => {
+        provider.signer?.abortPairingAttempt?.();
+        reject(new Error("Wallet connection cancelled."));
+      };
+      options.signal?.addEventListener("abort", handleAbort, { once: true });
+    });
+    await Promise.race([connection, cancellation]);
+  } finally {
+    provider.removeListener("display_uri", handlePairingUri);
+    if (handleAbort) options.signal?.removeEventListener("abort", handleAbort);
+  }
 }
 
 function parseRpcChainId(value: string): number {
