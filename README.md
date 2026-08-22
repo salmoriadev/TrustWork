@@ -9,7 +9,7 @@
 
 TrustWork is an early-access engineering portfolio project that combines a public read-only marketplace, wallet authentication, test USDC milestone escrow, evidence-integrity proofs, and event-derived reputation. Anonymous visitors can inspect indexed contracts; connecting a wallet is optional.
 
-**Deployment status:** provider setup and the dedicated Base Sepolia deployment are pending. No live URL or contract address is published yet. See the [deployment runbook](docs/deployment.md) for the exact release checkpoint.
+**Deployment status:** the dedicated Base Sepolia escrow is deployed and exact-match verified on Sourcify. API and frontend provider setup, public seed jobs, and the live smoke test are still pending, so no live application URL is published yet. See the [deployment record](docs/deployments/base-sepolia.md) and [deployment runbook](docs/deployment.md).
 
 ![TrustWork social preview](portfolio/social-preview.png)
 
@@ -105,9 +105,10 @@ The CI matrix runs backend unit/integration tests, Alembic migrations, frontend 
 
 - Network: Base Sepolia (`84532`)
 - Token: official Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`)
-- Escrow address: **pending dedicated deployment**
-- Deployment transaction: **pending**
-- Verification URL: **pending**
+- Escrow: [`0xCB9A7C320a46fa8FA091C7E74DD192df2fb6Ce81`](https://sepolia.basescan.org/address/0xCB9A7C320a46fa8FA091C7E74DD192df2fb6Ce81)
+- Deployment transaction: [`0x666ef368…68b7b9`](https://sepolia.basescan.org/tx/0x666ef36845f536f190228f934453a1a3b694de1669e3614b8444f7f36268b7b9)
+- Deployment block: `45824805`
+- Verification: [Sourcify exact match](https://sourcify.dev/server/v2/verify/21331f04-8adc-4430-8576-fdb03478df7a)
 
 No local Anvil address or fabricated transaction is presented as a public deployment.
 
@@ -126,7 +127,7 @@ Start with the [documentation index](docs/README.md), then use the [deployment r
 
 ## Roadmap
 
-- Complete the dedicated, verified Base Sepolia deployment and public seed jobs.
+- Create and index the public Base Sepolia seed jobs.
 - Publish the Vercel and Render URLs after live smoke tests.
 - Add encrypted user-controlled evidence storage as a separately threat-modeled capability.
 - Commission an independent smart-contract audit before considering any mainnet path.

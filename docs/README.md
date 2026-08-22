@@ -4,6 +4,7 @@
 
 - [Portfolio architecture and local setup](../README.md)
 - [Deployment runbook](deployment.md)
+- [Base Sepolia deployment record](deployments/base-sepolia.md)
 - [Portfolio security review](security-review.md)
 - [Database model](DATABASE_SCHEMA.md)
 - [Backend API](../backend/README.md)
