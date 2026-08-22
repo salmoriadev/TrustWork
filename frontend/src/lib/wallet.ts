@@ -95,6 +95,7 @@ async function walletConnectProvider(): Promise<WalletConnectEip1193Provider> {
   }
   return EthereumProvider.init({
     projectId: runtimeConfig.walletConnectProjectId,
+    relayUrl: "wss://relay.walletconnect.org",
     chains: [runtimeConfig.chainId],
     showQrModal: true,
     rpcMap: { [runtimeConfig.chainId]: runtimeConfig.rpcUrl },

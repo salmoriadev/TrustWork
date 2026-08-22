@@ -50,6 +50,9 @@ describe("connectWallet", () => {
   it("connects WalletConnect before requesting chain or accounts", async () => {
     const session = await connectWallet("walletconnect");
 
+    expect(mocks.init).toHaveBeenCalledWith(
+      expect.objectContaining({ relayUrl: "wss://relay.walletconnect.org" })
+    );
     expect(mocks.connect).toHaveBeenCalledOnce();
     expect(mocks.connect.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.request.mock.invocationCallOrder[0]
