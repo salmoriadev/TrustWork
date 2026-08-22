@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import AliasChoices, Field, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from web3 import Web3
 
@@ -56,6 +56,13 @@ class Settings(BaseSettings):
         default=10_000_000_000,
         validation_alias=AliasChoices("MAX_JOB_AMOUNT_RAW", "MAX_JOB_AMOUNT"),
     )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_driver(cls, value: object) -> object:
+        if isinstance(value, str) and value.startswith("postgresql://"):
+            return f"postgresql+psycopg://{value.removeprefix('postgresql://')}"
+        return value
 
     @model_validator(mode="after")
     def validate_deployable_environment(self) -> "Settings":
