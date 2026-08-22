@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -25,6 +25,7 @@ import { ReputationPanel } from "./components/ReputationPanel";
 import { SwipeDeck } from "./components/SwipeDeck";
 import { TermsBanner } from "./components/TermsBanner";
 import { WalletBar } from "./components/WalletBar";
+import { WalletConnectDialog } from "./components/WalletConnectDialog";
 import {
   authenticateWallet,
   createSwipe,
@@ -106,6 +107,9 @@ export default function ProductApp() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [session, setSession] = useState<AuthenticatedWalletSession | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletConnectOpen, setWalletConnectOpen] = useState(false);
+  const [walletConnectUri, setWalletConnectUri] = useState<string | null>(null);
+  const walletConnectAbortRef = useRef<AbortController | null>(null);
   const [matches, setMatches] = useState<string[]>([]);
   const [apiJobs, setApiJobs] = useState<MarketplaceJob[]>([]);
   const [dataSource, setDataSource] = useState<"api" | "mock">("api");
@@ -157,6 +161,8 @@ export default function ProductApp() {
   useEffect(() => {
     void reloadJobs();
   }, [reloadJobs]);
+
+  useEffect(() => () => walletConnectAbortRef.current?.abort(), []);
 
   const activeJob = apiJobs[activeIndex] ?? null;
   const reputationWallet = resolveReputationWallet({
@@ -262,15 +268,42 @@ export default function ProductApp() {
   }
 
   async function handleConnect(kind: WalletKind) {
+    const walletConnectAbort = kind === "walletconnect" ? new AbortController() : null;
+    if (walletConnectAbort) {
+      walletConnectAbortRef.current?.abort();
+      walletConnectAbortRef.current = walletConnectAbort;
+      setWalletConnectUri(null);
+      setWalletConnectOpen(true);
+    }
     try {
       setWalletError(null);
-      const walletSession = await connectWallet(kind);
+      const walletSession = await connectWallet(kind, {
+        onPairingUri: setWalletConnectUri,
+        signal: walletConnectAbort?.signal
+      });
+      if (walletConnectAbortRef.current === walletConnectAbort) {
+        setWalletConnectOpen(false);
+        setWalletConnectUri(null);
+      }
       const nextSession = await authenticateWallet(walletSession);
       setSession(nextSession);
       await saveProfile(nextSession);
     } catch (error) {
-      setWalletError(error instanceof Error ? error.message : "Wallet connection failed.");
+      const message = error instanceof Error ? error.message : "Wallet connection failed.";
+      if (message !== "Wallet connection cancelled.") setWalletError(message);
+    } finally {
+      if (walletConnectAbortRef.current === walletConnectAbort) {
+        walletConnectAbortRef.current = null;
+        setWalletConnectOpen(false);
+        setWalletConnectUri(null);
+      }
     }
+  }
+
+  function cancelWalletConnect() {
+    walletConnectAbortRef.current?.abort();
+    setWalletConnectOpen(false);
+    setWalletConnectUri(null);
   }
 
   const activeScreenConfig = screens.find((screen) => screen.id === activeScreen) ?? screens[0];
@@ -287,6 +320,7 @@ export default function ProductApp() {
 
       <div className="min-w-0 lg:pl-60">
         <WalletBar session={session} onConnect={(kind) => void handleConnect(kind)} error={walletError} />
+        <WalletConnectDialog open={walletConnectOpen} uri={walletConnectUri} onClose={cancelWalletConnect} />
         <TermsBanner />
 
         <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
