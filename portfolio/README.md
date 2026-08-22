@@ -7,7 +7,7 @@
 - `landing-mobile.png` — 390 px mobile landing capture.
 - [Demo script](demo-script.md) — a 30–45 second narrated sequence.
 - [Alt text and captions](alt-text.md) — accessible copy for each planned image.
-- [LinkedIn post](linkedin-post.md) — English launch copy with no invented adoption or performance claims.
+- [LinkedIn package](linkedin-post.md) — profile entry, Featured copy, English launch post, Portuguese first comment, skills, media order, and publication checklist.
 
 ## Deployment-dependent captures
 
